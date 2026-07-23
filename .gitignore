@@ -1,0 +1,47 @@
+# ─────────────────────────────────────────────────────────────
+# Root .gitignore for VR Digital Calling monorepo
+# ─────────────────────────────────────────────────────────────
+
+# Environment — NEVER commit secrets
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+.output/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Prisma generated client (regenerated on build)
+backend/node_modules/
+frontend/node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Docker volumes data
+postgres_data/
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+coverage/

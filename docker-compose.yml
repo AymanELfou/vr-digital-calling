@@ -1,0 +1,73 @@
+# ---------------------------------------------------------------------------
+# VR Digital Calling — Full Stack Docker Architecture
+#
+# Usage:
+#   docker-compose up --build -d
+#
+# Services:
+#   1. db       : PostgreSQL 16 (Données stockées dans le volume persistent « vr_db_data »)
+#   2. backend  : API Express.js + Prisma ORM + WebSockets (Pont Twilio / OpenAI)
+#   3. frontend : Application Web PWA React + Vite + Tailwind CSS
+# ---------------------------------------------------------------------------
+
+services:
+  # ─── 1. Base de Données (PostgreSQL) ──────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: vr_db
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vrdigital}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_production}
+      POSTGRES_DB: ${POSTGRES_DB:-vrdigital_db}
+    volumes:
+      - vr_db_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-vrdigital} -d ${POSTGRES_DB:-vrdigital_db}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─── 2. Backend (Express + Prisma + WebSockets) ───────────────────────────
+  backend:
+    build:
+      context: ./backend
+      target: development
+    container_name: vr_backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-vrdigital}:${POSTGRES_PASSWORD:-change_me_in_production}@db:5432/${POSTGRES_DB:-vrdigital_db}
+      NODE_ENV: development
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    ports:
+      - '4000:4000'
+    depends_on:
+      db:
+        condition: service_healthy
+    command: npm run dev
+
+  # ─── 3. Frontend (React + Vite PWA) ───────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      target: development
+    container_name: vr_frontend
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - '5173:5173'
+    depends_on:
+      - backend
+    command: npm run dev -- --host
+
+volumes:
+  vr_db_data:

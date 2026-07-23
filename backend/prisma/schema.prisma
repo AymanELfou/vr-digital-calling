@@ -1,0 +1,185 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// VR Digital Calling — Prisma Schema
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  COMPANY
+}
+
+enum CallStatus {
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  MISSED
+  NO_ANSWER
+}
+
+// ─── User (Authentication layer) ─────────────────────────────────────────────
+// Handles identity only. Business data lives in Company.
+// One User = one Company (role COMPANY) OR platform admin (role ADMIN).
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(COMPANY)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  company      Company? // null for ADMIN users
+
+  @@map("users")
+}
+
+// ─── Company (Business profile) ──────────────────────────────────────────────
+// One-to-one with User. Contains all business-specific information used
+// by the AI to answer calls.
+
+model Company {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Business info
+  name          String
+  description   String?  @db.Text
+  address       String?
+  website       String?
+  email         String?
+  isActive      Boolean  @default(true)
+
+  // Timestamps
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  twilioConfig  TwilioConfig?
+  aiConfig      AiConfig?
+  services      Service[]
+  knowledgeBase KnowledgeBase[]
+  calls         Call[]
+
+  @@map("companies")
+}
+
+// ─── TwilioConfig ────────────────────────────────────────────────────────────
+// Each company provides their own Twilio credentials.
+// authToken and apiSecret are AES-256-GCM encrypted before storage.
+// Encryption uses ENCRYPTION_KEY from the environment.
+
+model TwilioConfig {
+  id            String  @id @default(cuid())
+  companyId     String  @unique
+  company       Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  accountSid    String          // Twilio Account SID (AC...)
+  authToken     String          // Encrypted with AES-256-GCM
+  phoneNumber   String  @unique // E.164 format: +1234567890
+  apiKey        String?         // Optional: Twilio API Key SID (SK...)
+  apiSecret     String?         // Optional: Encrypted API Secret
+
+  isVerified    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("twilio_configs")
+}
+
+// ─── AiConfig ────────────────────────────────────────────────────────────────
+// Configuration for the AI voice agent for this company.
+// engine field controls whether to use "realtime" (OpenAI Realtime API)
+// or "chat_tts" (Chat Completions + TTS, fallback for development).
+
+model AiConfig {
+  id            String  @id @default(cuid())
+  companyId     String  @unique
+  company       Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  systemPrompt  String  @db.Text         // Custom instructions for the AI
+  voice         String  @default("alloy") // OpenAI voice: alloy, echo, fable, onyx, nova, shimmer
+  allowGeneral  Boolean @default(false)  // Allow AI to use general knowledge beyond company data
+  temperature   Float   @default(0.6)   // AI temperature (0.0 - 1.0)
+  engine        String  @default("realtime") // "realtime" | "chat_tts"
+  language      String  @default("en")  // Primary language for the AI
+
+  updatedAt     DateTime @updatedAt
+
+  @@map("ai_configs")
+}
+
+// ─── Service ─────────────────────────────────────────────────────────────────
+// Services offered by the company. Included in the AI's context.
+
+model Service {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?  @db.Text
+  price       Float?
+  duration    String?  // e.g., "30 min", "1 hour"
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("services")
+}
+
+// ─── KnowledgeBase ───────────────────────────────────────────────────────────
+// FAQ and knowledge entries. The AI uses these to answer caller questions
+// accurately without relying on general OpenAI knowledge.
+
+model KnowledgeBase {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  question    String           // Trigger phrase / question
+  answer      String  @db.Text // Answer the AI will give
+  category    String?          // e.g., "Hours", "Pricing", "Location"
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("knowledge_base")
+}
+
+// ─── Call ─────────────────────────────────────────────────────────────────────
+// Records every call received through Twilio.
+// Transcript stores the full JSON conversation for display in the dashboard.
+
+model Call {
+  id            String     @id @default(cuid())
+  companyId     String
+  company       Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  twilioCallSid String     @unique   // Twilio's Call SID (CA...)
+  callerNumber  String               // Caller's phone number (from Twilio)
+  status        CallStatus @default(IN_PROGRESS)
+  duration      Int?                 // Duration in seconds (set on call end)
+  transcript    String?   @db.Text  // JSON array of {role, content, timestamp}
+  recordingUrl  String?              // Optional Twilio recording URL
+  errorMessage  String?              // If status is FAILED
+
+  startedAt     DateTime  @default(now())
+  endedAt       DateTime?
+
+  @@index([companyId, startedAt])   // Optimized for call history queries
+  @@map("calls")
+}

@@ -1,0 +1,177 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   VR Digital Calling — Design System
+   Inspired by the VR Digital logo:
+   - Deep space dark background
+   - Electric violet (#6C3AFF) as primary brand
+   - Electric blue (#3B82F6) as secondary accent
+   - Warm orange (#F97316) for highlights
+   - Glowing, premium SaaS aesthetic
+───────────────────────────────────────────────────────────────────────────── */
+
+@layer base {
+  :root {
+    /* ── Core brand ───────────────────────────────────── */
+    --primary: 252 100% 60%;             /* Electric violet #6C3AFF */
+    --primary-foreground: 0 0% 100%;
+
+    --accent: 217 91% 60%;               /* Electric blue #3B82F6 */
+    --accent-foreground: 0 0% 100%;
+
+    /* ── App shell (dark space theme) ────────────────── */
+    --background: 240 6% 4%;            /* #09090B near black */
+    --foreground: 240 6% 97%;           /* #F4F4F5 near white */
+
+    /* ── Surface (cards, panels) ─────────────────────── */
+    --card: 240 8% 7%;                  /* #111118 */
+    --card-foreground: 240 6% 97%;
+
+    --popover: 240 8% 7%;
+    --popover-foreground: 240 6% 97%;
+
+    /* ── Secondary / muted ───────────────────────────── */
+    --secondary: 240 6% 12%;
+    --secondary-foreground: 240 5% 80%;
+
+    --muted: 240 6% 10%;
+    --muted-foreground: 240 4% 46%;     /* #71717A */
+
+    /* ── Semantic ─────────────────────────────────────── */
+    --destructive: 0 84% 60%;           /* #EF4444 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* ── Borders and inputs ──────────────────────────── */
+    --border: 240 6% 14%;               /* #1F1F2E */
+    --input: 240 6% 12%;
+    --ring: 252 100% 60%;               /* Focus ring = primary */
+
+    /* ── Border radius ───────────────────────────────── */
+    --radius: 0.625rem;
+
+    /* ── Custom brand tokens ──────────────────────────── */
+    --brand-violet: #6C3AFF;
+    --brand-blue: #3B82F6;
+    --brand-orange: #F97316;
+    --brand-success: #22C55E;
+    --brand-danger: #EF4444;
+
+    /* ── Glow effects ─────────────────────────────────── */
+    --glow-primary: 0 0 30px hsl(252 100% 60% / 0.35);
+    --glow-blue: 0 0 30px hsl(217 91% 60% / 0.35);
+    --glow-success: 0 0 20px hsl(142 76% 45% / 0.35);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, hsl(252 100% 60% / 0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, hsl(217 91% 60% / 0.04) 0%, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(240 6% 20%);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(252 100% 60% / 0.5);
+  }
+}
+
+/* ─── Component utilities ────────────────────────────────────────────────── */
+@layer components {
+  /* Glass card effect */
+  .glass-card {
+    @apply bg-card border border-border rounded-xl;
+    backdrop-filter: blur(12px);
+    background: linear-gradient(
+      145deg,
+      hsl(240 8% 8% / 0.95) 0%,
+      hsl(240 6% 6% / 0.95) 100%
+    );
+  }
+
+  /* Gradient border card */
+  .gradient-border-card {
+    position: relative;
+    @apply rounded-xl;
+    background: hsl(var(--card));
+  }
+  .gradient-border-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      135deg,
+      hsl(252 100% 60% / 0.4),
+      hsl(217 91% 60% / 0.2),
+      transparent
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Primary glow button */
+  .btn-glow {
+    box-shadow: var(--glow-primary);
+    transition: box-shadow 0.2s ease;
+  }
+  .btn-glow:hover {
+    box-shadow: 0 0 40px hsl(252 100% 60% / 0.5);
+  }
+
+  /* Status badge */
+  .status-active {
+    @apply text-green-400 bg-green-400/10 border border-green-400/20;
+  }
+  .status-inactive {
+    @apply text-zinc-400 bg-zinc-400/10 border border-zinc-400/20;
+  }
+  .status-error {
+    @apply text-red-400 bg-red-400/10 border border-red-400/20;
+  }
+
+  /* Sidebar nav item */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
+           text-muted-foreground transition-all duration-200
+           hover:text-foreground hover:bg-secondary;
+  }
+  .nav-item.active {
+    @apply text-foreground bg-primary/10 text-primary;
+  }
+
+  /* Page fade-in animation */
+  .page-enter {
+    @apply animate-fade-in;
+  }
+}
