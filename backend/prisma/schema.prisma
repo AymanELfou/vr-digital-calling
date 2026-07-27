@@ -61,6 +61,7 @@ model Company {
   address       String?
   website       String?
   email         String?
+  phone         String?  // Moroccan contact phone number (display only, not used by Twilio)
   isActive      Boolean  @default(true)
 
   // Timestamps
@@ -68,7 +69,7 @@ model Company {
   updatedAt     DateTime @updatedAt
 
   // Relations
-  twilioConfig  TwilioConfig?
+  // Note: TwilioConfig removed — MVP uses single platform Twilio account (see .env)
   aiConfig      AiConfig?
   services      Service[]
   knowledgeBase KnowledgeBase[]
@@ -77,28 +78,11 @@ model Company {
   @@map("companies")
 }
 
-// ─── TwilioConfig ────────────────────────────────────────────────────────────
-// Each company provides their own Twilio credentials.
-// authToken and apiSecret are AES-256-GCM encrypted before storage.
-// Encryption uses ENCRYPTION_KEY from the environment.
-
-model TwilioConfig {
-  id            String  @id @default(cuid())
-  companyId     String  @unique
-  company       Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  accountSid    String          // Twilio Account SID (AC...)
-  authToken     String          // Encrypted with AES-256-GCM
-  phoneNumber   String  @unique // E.164 format: +1234567890
-  apiKey        String?         // Optional: Twilio API Key SID (SK...)
-  apiSecret     String?         // Optional: Encrypted API Secret
-
-  isVerified    Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@map("twilio_configs")
-}
+// TwilioConfig intentionally removed.
+// MVP uses a single platform Twilio account configured via .env:
+//   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
+// All calls are routed to DEMO_COMPANY_ID.
+// Multi-company routing can be added later by restoring this model.
 
 // ─── AiConfig ────────────────────────────────────────────────────────────────
 // Configuration for the AI voice agent for this company.
@@ -110,12 +94,14 @@ model AiConfig {
   companyId     String  @unique
   company       Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  systemPrompt  String  @db.Text         // Custom instructions for the AI
-  voice         String  @default("alloy") // OpenAI voice: alloy, echo, fable, onyx, nova, shimmer
-  allowGeneral  Boolean @default(false)  // Allow AI to use general knowledge beyond company data
-  temperature   Float   @default(0.6)   // AI temperature (0.0 - 1.0)
-  engine        String  @default("realtime") // "realtime" | "chat_tts"
-  language      String  @default("en")  // Primary language for the AI
+  systemPrompt  String  @db.Text            // Custom instructions for the AI
+  voice         String  @default("alloy")   // OpenAI voice: alloy, echo, fable, onyx, nova, shimmer
+  allowGeneral  Boolean @default(true)      // Allow AI to use general knowledge beyond company data
+  temperature   Float   @default(0.6)      // AI temperature (0.0 - 1.0)
+  engine        String  @default("realtime")// "realtime" | "chat_tts"
+  language      String  @default("auto")   // "auto" = detect caller language, or "en", "fr", "ar", etc.
+  maxTokens     Int     @default(4096)     // Max tokens per response turn
+  silenceMs     Int     @default(500)      // VAD silence threshold in milliseconds
 
   updatedAt     DateTime @updatedAt
 
@@ -169,13 +155,14 @@ model Call {
   companyId     String
   company       Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  twilioCallSid String     @unique   // Twilio's Call SID (CA...)
-  callerNumber  String               // Caller's phone number (from Twilio)
+  twilioCallSid String     @unique   // Twilio's Call SID (CA...) — unique per call
+  callerNumber  String               // Caller's phone number E.164 (from Twilio)
   status        CallStatus @default(IN_PROGRESS)
   duration      Int?                 // Duration in seconds (set on call end)
-  transcript    String?   @db.Text  // JSON array of {role, content, timestamp}
-  recordingUrl  String?              // Optional Twilio recording URL
-  errorMessage  String?              // If status is FAILED
+  transcript    Json?                // Array of {role, content, timestamp} — native JSON
+  aiSummary     String?   @db.Text  // AI-generated summary of the call (post-processing)
+  errorMessage  String?              // If status is FAILED, reason stored here
+  detectedLang  String?              // Detected caller language (e.g. "fr", "ar", "en")
 
   startedAt     DateTime  @default(now())
   endedAt       DateTime?

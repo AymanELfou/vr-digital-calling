@@ -37,10 +37,7 @@ export function errorMiddleware(
   res.status(statusCode).json({ error: message })
 }
 
-/**
- * Creates an error with a specific HTTP status code.
- * Usage: throw createError(404, 'Company not found')
- */
+
 export function createError(statusCode: number, message: string): ApiError {
   const err: ApiError = new Error(message)
   err.statusCode = statusCode

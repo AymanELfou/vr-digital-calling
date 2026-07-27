@@ -5,9 +5,11 @@ export const registerSchema = z.object({
   password: z
     .string()
     .min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
     .regex(/[0-9]/, 'Password must contain at least one number'),
   companyName: z.string().min(2, 'Company name must be at least 2 characters').max(100),
+  phone: z
+    .string()
+    .regex(/^(?:\+212|0)([567]\d{8})$/, 'Only Moroccan Phone Number accepted'),
 })
 
 export const loginSchema = z.object({

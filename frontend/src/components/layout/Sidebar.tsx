@@ -29,7 +29,7 @@ const companyNav: NavItem[] = [
   { label: 'Knowledge Base', to: '/knowledge-base', icon: BookOpen },
   { label: 'Services', to: '/services', icon: Briefcase },
   { label: 'Call History', to: '/calls', icon: Phone },
-  { label: 'Twilio Setup', to: '/twilio-config', icon: PhoneCall },
+  { label: 'Phone Status', to: '/phone-status', icon: PhoneCall },
   { label: 'Profile', to: '/profile', icon: Settings },
 ]
 

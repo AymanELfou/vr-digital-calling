@@ -70,6 +70,7 @@ export const authService = {
         data: {
           userId: user.id,
           name: input.companyName,
+          phone: input.phone,
           // Create default AiConfig for the company
           aiConfig: {
             create: {

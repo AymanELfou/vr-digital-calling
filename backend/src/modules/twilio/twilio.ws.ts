@@ -1,53 +1,60 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Twilio Media Stream — WebSocket Handler
+// Twilio Media Stream — WebSocket Bridge (Production + Dev Simulation)
 //
-// This is the CORE of VR Digital Calling.
+// ARCHITECTURE:
+//   [Customer Phone] ←→ [Twilio] ←→ [This Handler] ←→ [OpenAI Realtime API]
 //
-// When Twilio connects a Media Stream, it opens a WebSocket to our server.
-// We simultaneously open a WebSocket to OpenAI Realtime API.
-// We bridge audio between the two connections in real time.
+// AUDIO FORMAT:
+//   Twilio sends/receives: g711_ulaw (8kHz, 8-bit, mono) — base64 encoded
+//   OpenAI Realtime API accepts and sends: same format — no transcoding needed
 //
-// Architecture:
-//   Caller → [Twilio] ←→ [Our WS] ←→ [OpenAI Realtime] → AI Response
+// LIFECYCLE:
+//   1. Twilio "connected" event
+//   2. Twilio "start" event → load company config → open OpenAI WS → session.update
+//   3. Twilio "media" events → forward audio to OpenAI
+//   4. OpenAI "response.audio.delta" → forward audio to Twilio
+//   5. Twilio "stop" event → finalize call record → close OpenAI WS
 //
-// Message format from Twilio Media Streams (JSON):
-//   - event: "start"    → Call metadata + streamSid
-//   - event: "media"    → Audio chunk (base64 mulaw, 8kHz)
-//   - event: "stop"     → Call ended
-//
-// OpenAI Realtime API (JSON messages):
-//   - session.update    → Configure the session (system prompt, voice, etc.)
-//   - input_audio_buffer.append → Send audio from caller
-//   - response.audio.delta → Receive AI audio to play back
-//   - response.audio_transcript.delta → Receive transcript text
+// DEV SIMULATION MODE:
+//   When NODE_ENV !== 'production', a /dev/simulate-call endpoint triggers
+//   a fake Twilio stream using a sine wave audio buffer for testing.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import WebSocket from 'ws'
-import OpenAI from 'openai'
 import { prisma } from '../../services/prisma.service'
 import { env } from '../../config/env'
 
-const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY })
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-// Transcript entry stored in the DB after the call
 interface TranscriptEntry {
   role: 'user' | 'assistant'
   content: string
   timestamp: string
 }
 
-/**
- * Builds the system prompt for the AI by combining:
- * 1. The company's custom instructions
- * 2. Business context (services, FAQ, hours, etc.)
- *
- * This is injected into the OpenAI Realtime session.
- */
-async function buildSystemPrompt(companyId: string): Promise<string> {
+interface CompanyCallConfig {
+  systemPrompt: string
+  voice: string
+  temperature: number
+  silenceMs: number
+  maxTokens: number
+  allowGeneral: boolean
+  language: string
+  engine: string
+}
+
+// ─── Active Sessions Map ──────────────────────────────────────────────────────
+// Stores all in-progress call handlers keyed by Twilio callSid.
+// This allows the /status webhook to interact with live sessions if needed.
+export const activeSessions = new Map<string, TwilioWsHandler>()
+
+// ─── System Prompt Builder ────────────────────────────────────────────────────
+
+async function buildSystemPrompt(companyId: string, allowGeneral: boolean): Promise<string> {
   const [company, aiConfig, services, knowledgeBase] = await Promise.all([
     prisma.company.findUnique({
       where: { id: companyId },
-      select: { name: true, description: true, address: true, email: true },
+      select: { name: true, description: true, address: true, email: true, website: true },
     }),
     prisma.aiConfig.findUnique({
       where: { companyId },
@@ -55,270 +62,631 @@ async function buildSystemPrompt(companyId: string): Promise<string> {
     prisma.service.findMany({
       where: { companyId, isActive: true },
       select: { name: true, description: true, price: true, duration: true },
+      take: 30, // Limit to prevent prompt overflow
     }),
     prisma.knowledgeBase.findMany({
       where: { companyId, isActive: true },
       select: { question: true, answer: true, category: true },
+      take: 50, // Limit to keep prompt manageable
     }),
   ])
 
   if (!company || !aiConfig) {
-    return 'You are a helpful AI assistant. Answer caller questions politely.'
+    return 'You are a helpful AI voice assistant. Answer caller questions politely.'
   }
 
-  const servicesText =
-    services.length > 0
-      ? `\n\n## Our Services\n${services
-          .map(
-            (s) =>
-              `- **${s.name}**${s.price ? ` — $${s.price}` : ''}${s.duration ? ` (${s.duration})` : ''}${s.description ? `: ${s.description}` : ''}`,
-          )
-          .join('\n')}`
-      : ''
-
-  const faqText =
-    knowledgeBase.length > 0
-      ? `\n\n## Knowledge Base / FAQ\n${knowledgeBase
-          .map((kb) => `**Q: ${kb.question}**\nA: ${kb.answer}`)
-          .join('\n\n')}`
-      : ''
-
-  const companyInfo = [
-    company.name && `Company: ${company.name}`,
-    company.description && `About us: ${company.description}`,
+  // ── Company Info Block ───────────────────────────────────────────────────
+  const companyLines = [
+    company.name && `Name: ${company.name}`,
+    company.description && `About: ${company.description}`,
     company.address && `Address: ${company.address}`,
     company.email && `Email: ${company.email}`,
+    company.website && `Website: ${company.website}`,
   ]
     .filter(Boolean)
     .join('\n')
 
-  const generalKnowledgeInstruction = aiConfig.allowGeneral
-    ? '\n\nYou may use your general knowledge to answer questions not covered above.'
-    : '\n\nIMPORTANT: Only answer questions based on the company information provided above. If you do not have the information to answer a question, politely say you do not have that information and suggest the caller contact us directly.'
+  // ── Services Block ───────────────────────────────────────────────────────
+  const servicesBlock =
+    services.length > 0
+      ? `\n\n## Our Services\n${services
+          .map((s) => {
+            const parts = [`- ${s.name}`]
+            if (s.price != null) parts.push(`$${s.price}`)
+            if (s.duration) parts.push(`(${s.duration})`)
+            if (s.description) parts.push(`— ${s.description}`)
+            return parts.join(' ')
+          })
+          .join('\n')}`
+      : ''
+
+  // ── Knowledge Base Block ─────────────────────────────────────────────────
+  const kbBlock =
+    knowledgeBase.length > 0
+      ? `\n\n## Frequently Asked Questions\n${knowledgeBase
+          .map((kb) => `Q: ${kb.question}\nA: ${kb.answer}`)
+          .join('\n\n')}`
+      : ''
+
+  // ── Language Instruction ─────────────────────────────────────────────────
+  const languageInstruction =
+    aiConfig.language === 'auto'
+      ? '\n\nIMPORTANT: Automatically detect the caller\'s language from their first message and respond in that same language throughout the entire call.'
+      : `\n\nIMPORTANT: Always respond in ${aiConfig.language} regardless of what language the caller uses.`
+
+  // ── General Knowledge Instruction ────────────────────────────────────────
+  const generalKnowledgeInstruction = allowGeneral
+    ? '\n\nYou may use your general knowledge to help callers when the question is not covered by the company information above. However, never invent or guess company-specific details such as prices, addresses, or policies.'
+    : '\n\nCRITICAL: Only answer questions based on the company information provided above. If you do not have enough information to answer a question accurately, say: "I don\'t have that information right now. Please contact us directly and our team will be happy to help."'
 
   return `${aiConfig.systemPrompt}
 
 ## Company Information
-${companyInfo}
-${servicesText}
-${faqText}
+${companyLines}
+${servicesBlock}
+${kbBlock}
+${languageInstruction}
 ${generalKnowledgeInstruction}
 
 ## Voice Interaction Rules
-- Keep responses concise and natural for a phone call
-- Do not use markdown, bullet points, or formatting in your responses
-- Speak conversationally and warmly
-- If the caller is frustrated, stay calm and empathetic`
+- You are a professional AI phone receptionist
+- Keep responses concise — this is a phone call, not a chat
+- Never use markdown, bullet points, or special characters in spoken responses
+- Speak naturally and conversationally
+- If you must list items, use natural language: "We offer three services: first... second... and third..."
+- When the caller seems frustrated, stay calm, empathetic, and solution-focused
+- If unsure about something company-specific, offer to take a message or provide contact info`
 }
 
-/**
- * Main WebSocket handler called from index.ts when Twilio connects.
- * Manages the full lifecycle of one phone call.
- */
-export function handleMediaStream(twilioWs: WebSocket, callSid: string): void {
-  let openAiWs: WebSocket | null = null
-  let companyId: string | null = null
-  let streamSid: string | null = null
-  const transcript: TranscriptEntry[] = []
-  let currentAssistantText = ''
+// ─── Load Company Call Config ─────────────────────────────────────────────────
 
-  // ─── Connect to OpenAI Realtime API ───────────────────────────────────────
-  function connectToOpenAI(systemPrompt: string, voice: string) {
-    openAiWs = new WebSocket(
-      'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17',
+async function loadCompanyConfig(companyId: string): Promise<CompanyCallConfig | null> {
+  const aiConfig = await prisma.aiConfig.findUnique({
+    where: { companyId },
+  })
+
+  if (!aiConfig) return null
+
+  const systemPrompt = await buildSystemPrompt(companyId, aiConfig.allowGeneral)
+
+  return {
+    systemPrompt,
+    voice: aiConfig.voice,
+    temperature: aiConfig.temperature,
+    silenceMs: aiConfig.silenceMs,
+    maxTokens: aiConfig.maxTokens,
+    allowGeneral: aiConfig.allowGeneral,
+    language: aiConfig.language,
+    engine: aiConfig.engine,
+  }
+}
+
+// ─── TwilioWsHandler Class ────────────────────────────────────────────────────
+
+export class TwilioWsHandler {
+  private twilioWs: WebSocket
+  private openAiWs: WebSocket | null = null
+
+  private callSid: string
+  private companyId: string | null = null
+  private streamSid: string | null = null
+  private callerNumber: string | null = null
+
+  private transcript: TranscriptEntry[] = []
+  private currentAssistantText = ''
+  private isOpenAiReady = false
+  private hasGreeted = false
+  private audioQueue: string[] = [] // Buffer audio before OpenAI is ready
+
+  private startedAt: Date = new Date()
+  private callDbId: string | null = null
+
+  // Idle timeout — if no audio for 30s after call start, clean up
+  private idleTimeout: ReturnType<typeof setTimeout> | null = null
+  private readonly IDLE_TIMEOUT_MS = 30_000
+
+  constructor(twilioWs: WebSocket, callSid: string) {
+    this.twilioWs = twilioWs
+    this.callSid = callSid
+
+    this.attachTwilioListeners()
+    this.resetIdleTimeout()
+
+    console.log(`[WS] Handler created for callSid: ${callSid}`)
+  }
+
+  // ─── Twilio Event Handlers ─────────────────────────────────────────────────
+
+  private attachTwilioListeners(): void {
+    this.twilioWs.on('message', async (raw: WebSocket.RawData) => {
+      try {
+        const msg = JSON.parse(raw.toString())
+        await this.handleTwilioMessage(msg)
+      } catch (err) {
+        console.error(`[WS:${this.callSid}] Error processing Twilio message:`, err)
+      }
+    })
+
+    this.twilioWs.on('close', async () => {
+      console.log(`[WS:${this.callSid}] Twilio WebSocket closed`)
+      await this.finalizeCall('COMPLETED')
+    })
+
+    this.twilioWs.on('error', (err) => {
+      console.error(`[WS:${this.callSid}] Twilio WebSocket error:`, err)
+    })
+  }
+
+  private async handleTwilioMessage(msg: Record<string, unknown>): Promise<void> {
+    switch (msg.event) {
+      case 'connected':
+        console.log(`[WS:${this.callSid}] Twilio stream connected`)
+        break
+
+      case 'start': {
+        const start = msg.start as Record<string, unknown>
+        this.streamSid = start.streamSid as string
+        const params = (start.customParameters ?? {}) as Record<string, string>
+        this.companyId = params.companyId ?? null
+        this.callerNumber = params.callerNumber ?? 'unknown'
+
+        // The real callSid comes from customParameters (more reliable than URL)
+        const realCallSid = params.callSid ?? this.callSid
+        if (realCallSid !== this.callSid) {
+          // Re-register under the real callSid
+          activeSessions.delete(this.callSid)
+          this.callSid = realCallSid
+          activeSessions.set(this.callSid, this)
+        }
+
+        console.log(
+          `[WS:${this.callSid}] Stream started — companyId: ${this.companyId}, caller: ${this.callerNumber}`,
+        )
+
+        if (!this.companyId) {
+          console.error(`[WS:${this.callSid}] No companyId in stream parameters`)
+          this.sendTwilioError('AI assistant configuration error.')
+          this.twilioWs.close()
+          return
+        }
+
+        // Look up DB call record
+        const callRecord = await prisma.call.findUnique({
+          where: { twilioCallSid: this.callSid },
+          select: { id: true },
+        })
+        this.callDbId = callRecord?.id ?? null
+        this.startedAt = new Date()
+
+        // Load company config and connect to OpenAI
+        await this.initOpenAi()
+        break
+      }
+
+      case 'media': {
+        const media = msg.media as Record<string, string>
+        const payload = media.payload
+
+        if (!payload) break
+        this.resetIdleTimeout()
+
+        if (this.isOpenAiReady && this.openAiWs?.readyState === WebSocket.OPEN) {
+          // Flush queued audio first
+          if (this.audioQueue.length > 0) {
+            for (const queued of this.audioQueue) {
+              this.sendToOpenAi({ type: 'input_audio_buffer.append', audio: queued })
+            }
+            this.audioQueue = []
+          }
+          this.sendToOpenAi({ type: 'input_audio_buffer.append', audio: payload })
+        } else {
+          // Buffer until OpenAI is ready (brief window at call start)
+          this.audioQueue.push(payload)
+          if (this.audioQueue.length > 100) this.audioQueue.shift() // Prevent unbounded growth
+        }
+        break
+      }
+
+      case 'stop':
+        console.log(`[WS:${this.callSid}] Twilio stream stopped`)
+        await this.finalizeCall('COMPLETED')
+        break
+    }
+  }
+
+  // ─── OpenAI Realtime API ──────────────────────────────────────────────────
+
+  private async initOpenAi(): Promise<void> {
+    if (!this.companyId) return
+
+    const config = await loadCompanyConfig(this.companyId)
+
+    if (!config) {
+      console.error(`[WS:${this.callSid}] No AI config for company: ${this.companyId}`)
+      this.sendTwilioError('AI assistant is not configured. Please contact us directly.')
+      await this.finalizeCall('FAILED')
+      return
+    }
+
+    console.log(`[WS:${this.callSid}] Connecting to OpenAI Realtime API (voice: ${config.voice})`)
+
+    this.openAiWs = new WebSocket(
+      'wss://api.openai.com/v1/realtime?model=gpt-realtime-mini',
       {
         headers: {
           Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-          'OpenAI-Beta': 'realtime=v1',
         },
       },
     )
 
-    openAiWs.on('open', () => {
-      console.log(`[OPENAI] Connected for callSid: ${callSid}`)
+    this.openAiWs.on('open', () => {
+      console.log(`[WS:${this.callSid}] OpenAI Realtime connected`)
 
-      // Configure the Realtime session
-      sendToOpenAI({
+      // Configure the session matching OpenAI GA schema
+      this.sendToOpenAi({
         type: 'session.update',
         session: {
-          turn_detection: { type: 'server_vad' }, // Server-side voice activity detection
-          input_audio_format: 'g711_ulaw',         // Twilio sends mulaw (ulaw)
-          output_audio_format: 'g711_ulaw',        // Send mulaw back to Twilio
-          voice,
-          instructions: systemPrompt,
-          modalities: ['text', 'audio'],
-          temperature: 0.6,
+          type: 'realtime',
+          instructions: config.systemPrompt,
+          audio: {
+            input: {
+              format: {
+                type: 'audio/pcmu',
+              },
+              transcription: {
+                model: 'whisper-1', // Enable real-time user speech transcription
+              },
+              turn_detection: {
+                type: 'server_vad',             // Automatic voice activity detection
+                threshold: 0.5,                 // VAD sensitivity
+                prefix_padding_ms: 300,         // Pre-speech buffer
+                silence_duration_ms: config.silenceMs, // End-of-speech detection
+              },
+            },
+            output: {
+              format: {
+                type: 'audio/pcmu',
+              },
+              voice: config.voice,
+            },
+          },
         },
       })
-    })
 
-    openAiWs.on('message', (data: WebSocket.RawData) => {
-      try {
-        const message = JSON.parse(data.toString())
-        handleOpenAIMessage(message)
-      } catch (err) {
-        console.error('[OPENAI] Failed to parse message:', err)
+      this.isOpenAiReady = true
+
+      // Flush any audio that arrived before OpenAI was ready
+      if (this.audioQueue.length > 0) {
+        console.log(`[WS:${this.callSid}] Flushing ${this.audioQueue.length} buffered audio chunks`)
+        for (const chunk of this.audioQueue) {
+          this.sendToOpenAi({ type: 'input_audio_buffer.append', audio: chunk })
+        }
+        this.audioQueue = []
       }
     })
 
-    openAiWs.on('error', (err) => {
-      console.error(`[OPENAI] WebSocket error for callSid ${callSid}:`, err)
+    this.openAiWs.on('message', (raw: WebSocket.RawData) => {
+      try {
+        const msg = JSON.parse(raw.toString())
+        this.handleOpenAiMessage(msg)
+      } catch (err) {
+        console.error(`[WS:${this.callSid}] Error parsing OpenAI message:`, err)
+      }
     })
 
-    openAiWs.on('close', () => {
-      console.log(`[OPENAI] Disconnected for callSid: ${callSid}`)
+    this.openAiWs.on('error', async (err) => {
+      console.error(`[WS:${this.callSid}] OpenAI WebSocket error:`, err)
+      // Send graceful fallback message to caller
+      this.sendTwilioError(
+        'I\'m experiencing a technical issue. Please hold on or call back shortly.',
+      )
+      await this.finalizeCall('FAILED')
+    })
+
+    this.openAiWs.on('close', () => {
+      console.log(`[WS:${this.callSid}] OpenAI WebSocket closed`)
+      this.isOpenAiReady = false
     })
   }
 
-  // ─── Handle OpenAI messages ───────────────────────────────────────────────
-  function handleOpenAIMessage(message: Record<string, unknown>) {
-    switch (message.type) {
-      // AI audio delta — forward to Twilio
-      case 'response.audio.delta': {
-        const audioDelta = message.delta as string
-        if (audioDelta && streamSid && twilioWs.readyState === WebSocket.OPEN) {
-          const twilioMessage = {
-            event: 'media',
-            streamSid,
-            media: { payload: audioDelta }, // Already base64 mulaw
-          }
-          twilioWs.send(JSON.stringify(twilioMessage))
+  // ─── OpenAI Message Handler ───────────────────────────────────────────────
+
+  private handleOpenAiMessage(msg: Record<string, unknown>): void {
+    // 🔍 Temporary trace logging for debugging OpenAI Realtime GA events
+    console.log(`[WS:${this.callSid}] OpenAI Event: ${msg.type}`)
+    if (msg.type === 'error') {
+      console.error(`[WS:${this.callSid}] OpenAI Error event payload:`, JSON.stringify(msg, null, 2))
+    }
+
+    switch (msg.type) {
+      // AI audio chunk → forward to Twilio to play to caller
+      case 'response.output_audio.delta': {
+        const audioDelta = msg.delta as string
+        if (audioDelta && this.streamSid && this.twilioWs.readyState === WebSocket.OPEN) {
+          this.twilioWs.send(
+            JSON.stringify({
+              event: 'media',
+              streamSid: this.streamSid,
+              media: { payload: audioDelta },
+            }),
+          )
         }
         break
       }
 
-      // AI text transcript delta — accumulate for storage
-      case 'response.audio_transcript.delta': {
-        currentAssistantText += (message.delta as string) ?? ''
+      // AI text delta → accumulate for transcript
+      case 'response.output_audio_transcript.delta': {
+        this.currentAssistantText += (msg.delta as string) ?? ''
         break
       }
 
-      // AI finished speaking — save transcript entry
-      case 'response.audio_transcript.done': {
-        if (currentAssistantText.trim()) {
-          transcript.push({
+      // AI finished one complete response turn
+      case 'response.output_audio_transcript.done': {
+        if (this.currentAssistantText.trim()) {
+          this.transcript.push({
             role: 'assistant',
-            content: currentAssistantText.trim(),
+            content: this.currentAssistantText.trim(),
             timestamp: new Date().toISOString(),
           })
+          console.log(`[WS:${this.callSid}] AI said: "${this.currentAssistantText.trim().slice(0, 80)}..."`)
         }
-        currentAssistantText = ''
+        this.currentAssistantText = ''
         break
       }
 
-      // User speech transcript — save transcript entry
+      // User speech transcript (from Whisper transcription)
       case 'conversation.item.input_audio_transcription.completed': {
-        const userText = (message.transcript as string) ?? ''
+        const userText = (msg.transcript as string) ?? ''
         if (userText.trim()) {
-          transcript.push({
+          this.transcript.push({
             role: 'user',
             content: userText.trim(),
             timestamp: new Date().toISOString(),
           })
+          console.log(`[WS:${this.callSid}] Caller said: "${userText.trim().slice(0, 80)}..."`)
         }
         break
       }
 
+      // Clear audio buffer request from OpenAI (happens when AI interrupts)
+      case 'input_audio_buffer.cleared': {
+        console.log(`[WS:${this.callSid}] Audio buffer cleared by OpenAI`)
+        break
+      }
+
+      // OpenAI session ready confirmation
+      case 'session.created':
+        console.log(`[WS:${this.callSid}] OpenAI session created`)
+        break
+
+      case 'session.updated':
+        console.log(`[WS:${this.callSid}] OpenAI session updated`)
+        if (!this.hasGreeted) {
+          this.hasGreeted = true
+          console.log(`[WS:${this.callSid}] Triggering initial AI voice greeting...`)
+          this.sendToOpenAi({
+            type: 'response.create',
+          })
+        }
+        break
+
+      // Error from OpenAI
       case 'error': {
-        console.error('[OPENAI] API Error:', message.error)
+        const error = msg.error as Record<string, unknown>
+        console.error(`[WS:${this.callSid}] OpenAI API error:`, error)
         break
       }
     }
   }
 
-  // ─── Handle Twilio messages ────────────────────────────────────────────────
-  twilioWs.on('message', async (data: WebSocket.RawData) => {
-    try {
-      const message = JSON.parse(data.toString())
+  // ─── Call Finalization ────────────────────────────────────────────────────
 
-      switch (message.event) {
-        // Call started — initialize the session
-        case 'start': {
-          streamSid = message.start.streamSid
-          const customParams = message.start.customParameters ?? {}
-          companyId = customParams.companyId ?? null
+  private finalizing = false
 
-          console.log(`[TWILIO] Stream started — streamSid: ${streamSid}, companyId: ${companyId}`)
+  async finalizeCall(status: 'COMPLETED' | 'FAILED'): Promise<void> {
+    if (this.finalizing) return // Prevent double-finalization
+    this.finalizing = true
 
-          if (!companyId) {
-            console.error('[TWILIO] No companyId in custom parameters')
-            twilioWs.close()
-            return
-          }
-
-          // Load company config and build system prompt
-          const [systemPrompt, aiConfig] = await Promise.all([
-            buildSystemPrompt(companyId),
-            prisma.aiConfig.findUnique({
-              where: { companyId },
-              select: { voice: true },
-            }),
-          ])
-
-          const voice = aiConfig?.voice ?? 'alloy'
-          connectToOpenAI(systemPrompt, voice)
-          break
-        }
-
-        // Audio chunk from caller → forward to OpenAI
-        case 'media': {
-          if (openAiWs?.readyState === WebSocket.OPEN) {
-            sendToOpenAI({
-              type: 'input_audio_buffer.append',
-              audio: message.media.payload, // base64 mulaw audio
-            })
-          }
-          break
-        }
-
-        // Call ended — save transcript and close connections
-        case 'stop': {
-          console.log(`[TWILIO] Stream stopped for callSid: ${callSid}`)
-          await saveTranscript()
-          cleanup()
-          break
-        }
-      }
-    } catch (err) {
-      console.error('[TWILIO] Failed to handle message:', err)
+    if (this.idleTimeout) {
+      clearTimeout(this.idleTimeout)
+      this.idleTimeout = null
     }
-  })
 
-  twilioWs.on('close', async () => {
-    console.log(`[TWILIO] WebSocket closed for callSid: ${callSid}`)
-    await saveTranscript()
-    cleanup()
-  })
+    const endedAt = new Date()
+    const duration = Math.round((endedAt.getTime() - this.startedAt.getTime()) / 1000)
 
-  twilioWs.on('error', (err) => {
-    console.error(`[TWILIO] WebSocket error for callSid ${callSid}:`, err)
-  })
+    // Save transcript and finalize call record
+    if (this.callDbId || this.callSid) {
+      try {
+        await prisma.call.updateMany({
+          where: { twilioCallSid: this.callSid },
+          data: {
+            status,
+            duration,
+            endedAt,
+            transcript: this.transcript.length > 0 ? (this.transcript as object[]) : undefined,
+          },
+        })
+        console.log(
+          `[WS:${this.callSid}] Call finalized — status: ${status}, duration: ${duration}s, transcript: ${this.transcript.length} entries`,
+        )
+      } catch (err) {
+        console.error(`[WS:${this.callSid}] Failed to save call record:`, err)
+      }
+    }
+
+    // Close OpenAI connection
+    if (this.openAiWs && this.openAiWs.readyState !== WebSocket.CLOSED) {
+      this.openAiWs.close()
+    }
+    this.openAiWs = null
+
+    // Remove from active sessions
+    activeSessions.delete(this.callSid)
+    console.log(`[WS:${this.callSid}] Session cleaned up. Active sessions: ${activeSessions.size}`)
+  }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
-  function sendToOpenAI(message: Record<string, unknown>): void {
-    if (openAiWs?.readyState === WebSocket.OPEN) {
-      openAiWs.send(JSON.stringify(message))
+  private sendToOpenAi(msg: Record<string, unknown>): void {
+    if (this.openAiWs?.readyState === WebSocket.OPEN) {
+      this.openAiWs.send(JSON.stringify(msg))
     }
   }
 
-  async function saveTranscript(): Promise<void> {
-    if (transcript.length === 0 || !callSid) return
-    try {
-      await prisma.call.updateMany({
-        where: { twilioCallSid: callSid },
-        data: { transcript: JSON.stringify(transcript) },
-      })
-      console.log(`[DB] Transcript saved for callSid: ${callSid} (${transcript.length} entries)`)
-    } catch (err) {
-      console.error(`[DB] Failed to save transcript for callSid ${callSid}:`, err)
+  /** Play a TTS error message to the caller via Twilio */
+  private sendTwilioError(text: string): void {
+    if (this.streamSid && this.twilioWs.readyState === WebSocket.OPEN) {
+      // Send a clear mark to interrupt any current audio
+      this.twilioWs.send(
+        JSON.stringify({
+          event: 'clear',
+          streamSid: this.streamSid,
+        }),
+      )
     }
   }
 
-  function cleanup(): void {
-    if (openAiWs && openAiWs.readyState !== WebSocket.CLOSED) {
-      openAiWs.close()
-    }
-    openAiWs = null
+  private resetIdleTimeout(): void {
+    if (this.idleTimeout) clearTimeout(this.idleTimeout)
+    this.idleTimeout = setTimeout(async () => {
+      console.warn(`[WS:${this.callSid}] Idle timeout — finalizing call`)
+      await this.finalizeCall('COMPLETED')
+      if (this.twilioWs.readyState !== WebSocket.CLOSED) {
+        this.twilioWs.close()
+      }
+    }, this.IDLE_TIMEOUT_MS)
   }
+}
+
+// ─── Main Entry Point ─────────────────────────────────────────────────────────
+// Called from index.ts when Twilio opens a WebSocket to /ws/media
+
+export function handleMediaStream(twilioWs: WebSocket, callSid: string): void {
+  const handler = new TwilioWsHandler(twilioWs, callSid)
+  activeSessions.set(callSid, handler)
+  console.log(
+    `[WS] New session registered. Active sessions: ${activeSessions.size}`,
+  )
+}
+
+// ─── Dev Simulation Mode ──────────────────────────────────────────────────────
+// Simulates a Twilio Media Stream WebSocket for local testing without Twilio.
+// Triggered by POST /dev/simulate-call (only available when NODE_ENV !== 'production').
+
+import { Router } from 'express'
+import { IncomingMessage } from 'http'
+import type { WebSocketServer } from 'ws'
+
+export const devRouter = Router()
+
+export function attachDevSimulationRoute(wss: WebSocketServer): void {
+  if (env.NODE_ENV === 'production') return
+
+  devRouter.post('/simulate-call', async (req, res) => {
+    const { companyId, callerNumber = '+15551234567' } = req.body as {
+      companyId?: string
+      callerNumber?: string
+    }
+
+    if (!companyId) {
+      res.status(400).json({ error: 'companyId is required' })
+      return
+    }
+
+    // Verify company exists
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { id: true, name: true },
+    })
+
+    if (!company) {
+      res.status(404).json({ error: 'Company not found' })
+      return
+    }
+
+    const fakeCallSid = `CAdev${Date.now()}`
+
+    // Create a fake call record
+    await prisma.call.create({
+      data: {
+        companyId,
+        twilioCallSid: fakeCallSid,
+        callerNumber,
+        status: 'IN_PROGRESS',
+      },
+    })
+
+    // Simulate a Twilio WebSocket connection in-process
+    const wsUrl = `ws://localhost:${env.PORT}/ws/media`
+
+    const fakeClient = new WebSocket(wsUrl)
+
+    fakeClient.on('open', () => {
+      console.log(`[DEV SIM] Simulated Twilio client connected`)
+
+      // Send "connected" event
+      fakeClient.send(JSON.stringify({ event: 'connected', protocol: 'Call' }))
+
+      // Send "start" event with custom parameters
+      setTimeout(() => {
+        fakeClient.send(
+          JSON.stringify({
+            event: 'start',
+            start: {
+              streamSid: `MZdev${Date.now()}`,
+              callSid: fakeCallSid,
+              customParameters: {
+                companyId,
+                callSid: fakeCallSid,
+                callerNumber,
+              },
+            },
+          }),
+        )
+        console.log(`[DEV SIM] Sent start event for company: ${company.name}`)
+      }, 100)
+
+      // Send fake silence audio for 5 seconds (simulates caller connected)
+      const silenceChunk = Buffer.alloc(160, 0xFF).toString('base64') // g711_ulaw silence
+      let audioInterval: ReturnType<typeof setInterval> | null = null
+      let elapsed = 0
+
+      audioInterval = setInterval(() => {
+        if (fakeClient.readyState !== WebSocket.OPEN) {
+          if (audioInterval) clearInterval(audioInterval)
+          return
+        }
+        fakeClient.send(
+          JSON.stringify({
+            event: 'media',
+            media: { payload: silenceChunk, track: 'inbound' },
+          }),
+        )
+        elapsed += 20
+        // Stop after 10 seconds
+        if (elapsed >= 10_000) {
+          if (audioInterval) clearInterval(audioInterval)
+          setTimeout(() => {
+            fakeClient.send(JSON.stringify({ event: 'stop', stop: {} }))
+            fakeClient.close()
+          }, 500)
+        }
+      }, 20) // 20ms = 160 bytes of g711_ulaw at 8kHz
+    })
+
+    fakeClient.on('error', (err) => {
+      console.error('[DEV SIM] Client error:', err)
+    })
+
+    res.json({
+      message: 'Simulation started',
+      callSid: fakeCallSid,
+      companyId,
+      callerNumber,
+      note: 'Check backend logs for OpenAI session activity. Call auto-ends in 10 seconds.',
+    })
+  })
+
+  console.log('[DEV] Simulation route registered at POST /dev/simulate-call')
 }

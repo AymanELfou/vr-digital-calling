@@ -68,7 +68,6 @@ export default function DashboardPage() {
   const calls = callsData?.data ?? []
   const totalCalls = callsData?.pagination.total ?? 0
   const completedCalls = calls.filter((c) => c.status === 'COMPLETED').length
-  const hasTwilio = !!profileData?.twilioConfig
   const hasAiConfig = !!profileData?.aiConfig
 
   return (
@@ -83,8 +82,8 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Setup checklist — shown when not configured */}
-      {(!hasTwilio || !hasAiConfig) && (
+      {/* Setup checklist — shown when AI is not yet configured */}
+      {!hasAiConfig && (
         <Card className="border-primary/30 bg-primary/5">
           <CardHeader>
             <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
@@ -94,21 +93,21 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex items-center gap-3 text-sm">
-              <CheckCircle className={`w-4 h-4 ${hasTwilio ? 'text-green-400' : 'text-muted-foreground'}`} />
-              <span className={hasTwilio ? 'text-foreground line-through opacity-60' : 'text-foreground'}>
-                Configure Twilio credentials
+              <CheckCircle className="w-4 h-4 text-green-400" />
+              <span className="text-foreground line-through opacity-60">
+                Register your company
               </span>
-              {!hasTwilio && (
-                <Badge variant="outline" className="text-xs text-primary border-primary/30">
-                  Required
-                </Badge>
-              )}
             </div>
             <div className="flex items-center gap-3 text-sm">
               <CheckCircle className={`w-4 h-4 ${hasAiConfig ? 'text-green-400' : 'text-muted-foreground'}`} />
               <span className={hasAiConfig ? 'text-foreground line-through opacity-60' : 'text-foreground'}>
                 Configure AI instructions
               </span>
+              {!hasAiConfig && (
+                <Badge variant="outline" className="text-xs text-primary border-primary/30">
+                  Required
+                </Badge>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -132,9 +131,9 @@ export default function DashboardPage() {
         />
         <StatCard
           title="AI Status"
-          value={hasTwilio && hasAiConfig ? 'Active' : 'Setup needed'}
+          value={hasAiConfig ? 'Active' : 'Setup needed'}
           icon={PhoneCall}
-          color={hasTwilio && hasAiConfig ? 'green' : 'orange'}
+          color={hasAiConfig ? 'green' : 'orange'}
         />
       </div>
 

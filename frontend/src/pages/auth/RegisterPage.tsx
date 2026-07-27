@@ -12,21 +12,19 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { AuthResponse } from '@/lib/types'
 
-const schema = z
-  .object({
-    companyName: z.string().min(2, 'Company name must be at least 2 characters'),
-    email: z.string().email('Invalid email address'),
-    password: z
-      .string()
-      .min(8, 'At least 8 characters')
-      .regex(/[A-Z]/, 'Must contain one uppercase letter')
-      .regex(/[0-9]/, 'Must contain one number'),
-    confirmPassword: z.string(),
-  })
-  .refine((d) => d.password === d.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
-  })
+const schema = z.object({
+  companyName: z.string().min(2, 'Company name must be at least 2 characters'),
+  email: z.string().email('Invalid email address'),
+  password: z
+    .string()
+    .min(8, 'At least 8 characters')
+    .regex(/[A-Z]/, 'Must contain one uppercase letter')
+    .regex(/[0-9]/, 'Must contain one number'),
+  phone: z
+    .string()
+    .min(1, 'Phone number is required')
+    .regex(/^(?:\+212|0)([567]\d{8})$/, 'Only Moroccan Phone Number accepted'),
+})
 
 type FormValues = z.infer<typeof schema>
 
@@ -45,6 +43,7 @@ export default function RegisterPage() {
         email: values.email,
         password: values.password,
         companyName: values.companyName,
+        phone: values.phone,
       })
       setAuth(data.user, data.company)
       setReady()
@@ -127,16 +126,21 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Repeat your password"
-                className="bg-secondary border-border"
-                {...register('confirmPassword')}
-              />
-              {errors.confirmPassword && (
-                <p className="text-destructive text-xs">{errors.confirmPassword.message}</p>
+              <Label htmlFor="phone">Phone number</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base select-none" title="Morocco">
+                  🇲🇦 <span className="text-muted-foreground ml-0.5 text-xs font-semibold">+212</span>
+                </span>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="0612345678"
+                  className="bg-secondary border-border pl-16"
+                  {...register('phone')}
+                />
+              </div>
+              {errors.phone && (
+                <p className="text-destructive text-xs">{errors.phone.message}</p>
               )}
             </div>
 

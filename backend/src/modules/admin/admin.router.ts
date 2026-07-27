@@ -14,7 +14,6 @@ router.get('/companies', async (_req, res) => {
   const companies = await prisma.company.findMany({
     include: {
       user: { select: { email: true, createdAt: true, isActive: true } },
-      twilioConfig: { select: { phoneNumber: true, isVerified: true } },
       _count: { select: { calls: true, services: true, knowledgeBase: true } },
     },
     orderBy: { createdAt: 'desc' },
@@ -28,15 +27,6 @@ router.get('/companies/:id', async (req, res) => {
     where: { id: req.params.id },
     include: {
       user: { select: { id: true, email: true, createdAt: true, isActive: true } },
-      twilioConfig: {
-        select: {
-          id: true,
-          accountSid: true,
-          phoneNumber: true,
-          isVerified: true,
-          updatedAt: true,
-        },
-      },
       aiConfig: true,
       _count: { select: { calls: true } },
     },

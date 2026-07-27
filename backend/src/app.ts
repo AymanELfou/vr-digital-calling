@@ -20,10 +20,10 @@ import { companyRouter } from './modules/company/company.router'
 import { aiConfigRouter } from './modules/ai-config/ai-config.router'
 import { knowledgeBaseRouter } from './modules/knowledge-base/kb.router'
 import { servicesRouter } from './modules/services/services.router'
-import { twilioConfigRouter } from './modules/twilio-config/twilio-config.router'
 import { callsRouter } from './modules/calls/calls.router'
 import { adminRouter } from './modules/admin/admin.router'
 import { twilioWebhookRouter } from './modules/twilio/twilio.router'
+import { devRouter } from './modules/twilio/twilio.ws'
 
 const app = express()
 
@@ -72,7 +72,6 @@ app.use('/api/company', companyRouter)
 app.use('/api/ai-config', aiConfigRouter)
 app.use('/api/knowledge-base', knowledgeBaseRouter)
 app.use('/api/services', servicesRouter)
-app.use('/api/twilio-config', twilioConfigRouter)
 app.use('/api/calls', callsRouter)
 app.use('/api/admin', adminRouter)
 
@@ -81,6 +80,11 @@ app.use('/api/admin', adminRouter)
 // It must NOT be behind JWT auth — Twilio can't send our JWT token.
 // Security is provided by validating the X-Twilio-Signature header.
 app.use('/api/twilio', twilioWebhookRouter)
+
+// ─── Dev Simulation (development only) ─────────────────────────────────────
+if (env.NODE_ENV !== 'production') {
+  app.use('/dev', devRouter)
+}
 
 // ─── 404 handler ─────────────────────────────────────────────────────────────
 app.use((_req, res) => {

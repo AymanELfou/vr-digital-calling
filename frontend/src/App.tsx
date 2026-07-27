@@ -19,7 +19,7 @@ const KnowledgeBasePage = lazy(() => import('@/pages/company/KnowledgeBasePage')
 const ServicesPage = lazy(() => import('@/pages/company/ServicesPage'))
 const CallHistoryPage = lazy(() => import('@/pages/company/CallHistoryPage'))
 const ProfilePage = lazy(() => import('@/pages/company/ProfilePage'))
-const TwilioConfigPage = lazy(() => import('@/pages/company/TwilioConfigPage'))
+const PhoneStatusPage  = lazy(() => import('@/pages/company/PhoneStatusPage'))
 const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage'))
 const CompaniesPage = lazy(() => import('@/pages/admin/CompaniesPage'))
 
@@ -62,7 +62,7 @@ const router = createBrowserRouter([
       { path: '/services', element: <Suspense fallback={<PageLoader />}><ServicesPage /></Suspense> },
       { path: '/calls', element: <Suspense fallback={<PageLoader />}><CallHistoryPage /></Suspense> },
       { path: '/profile', element: <Suspense fallback={<PageLoader />}><ProfilePage /></Suspense> },
-      { path: '/twilio-config', element: <Suspense fallback={<PageLoader />}><TwilioConfigPage /></Suspense> },
+      { path: '/phone-status', element: <Suspense fallback={<PageLoader />}><PhoneStatusPage /></Suspense> },
     ],
   },
 

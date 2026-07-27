@@ -11,7 +11,7 @@ import { WebSocketServer } from 'ws'
 import { app } from './app'
 import { env } from './config/env'
 import { prisma } from './services/prisma.service'
-import { handleMediaStream } from './modules/twilio/twilio.ws'
+import { handleMediaStream, devRouter, attachDevSimulationRoute } from './modules/twilio/twilio.ws'
 
 async function bootstrap() {
   // ─── Verify database connection ─────────────────────────────────────────
@@ -37,14 +37,24 @@ async function bootstrap() {
   })
 
   wss.on('connection', (ws, req) => {
-    const callSid = req.url?.split('/').pop() ?? 'unknown'
-    console.log(`[WS] Twilio Media Stream connected — callSid: ${callSid}`)
-    handleMediaStream(ws, callSid)
+    // Note: callSid is received inside the Twilio 'start' event message,
+    // not in the URL path. We use a temporary ID here; the handler resolves
+    // the real callSid from the Twilio stream parameters.
+    const tempId = `pending-${Date.now()}`
+    console.log(`[WS] Twilio Media Stream connected from: ${req.socket.remoteAddress}`)
+    handleMediaStream(ws, tempId)
   })
 
   wss.on('error', (err) => {
     console.error('[WS] WebSocket server error:', err)
   })
+
+  // ─── Dev Simulation (development only) ─────────────────────────────────────
+  // Registers POST /dev/simulate-call to test the OpenAI bridge without Twilio.
+  if (env.NODE_ENV !== 'production') {
+    attachDevSimulationRoute(wss)
+    console.log('🧪 Dev simulation mode active: POST http://localhost:4000/dev/simulate-call')
+  }
 
   // ─── Start listening ──────────────────────────────────────────────────────
   server.listen(env.PORT, () => {

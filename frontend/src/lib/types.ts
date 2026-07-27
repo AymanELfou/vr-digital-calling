@@ -42,31 +42,16 @@ export interface Company {
   address: string | null
   website: string | null
   email: string | null
+  phone: string | null       // Moroccan contact number (display only)
   isActive: boolean
   createdAt: string
   updatedAt: string
-  twilioConfig: TwilioConfigPublic | null
-  aiConfig: AiConfig | null
+  aiConfig: AiConfig | null  // null if not yet configured
 }
 
-// ── Twilio Config (public view — no secrets) ──────────────────────────────────
-
-export interface TwilioConfigPublic {
-  id: string
-  accountSid: string
-  phoneNumber: string
-  apiKey: string | null
-  isVerified: boolean
-  updatedAt: string
-}
-
-export interface TwilioConfigInput {
-  accountSid: string
-  authToken: string
-  phoneNumber: string
-  apiKey?: string
-  apiSecret?: string
-}
+// TwilioConfig types removed — MVP uses single platform Twilio account.
+// Credentials are stored only in the backend .env file.
+// See: TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_PHONE_NUMBER
 
 // ── AI Config ─────────────────────────────────────────────────────────────────
 
@@ -81,7 +66,9 @@ export interface AiConfig {
   allowGeneral: boolean
   temperature: number
   engine: AiEngine
-  language: string
+  language: string     // 'auto' | 'en' | 'fr' | 'ar' | ...
+  maxTokens: number
+  silenceMs: number
   updatedAt: string
 }
 
@@ -126,8 +113,9 @@ export interface Call {
 }
 
 export interface CallDetail extends Call {
-  transcript: TranscriptEntry[] | null
-  recordingUrl: string | null
+  transcript: TranscriptEntry[] | null  // Stored as JSON in DB, parsed by backend
+  aiSummary: string | null              // AI-generated post-call summary
+  detectedLang: string | null           // Language detected from caller
 }
 
 export interface TranscriptEntry {
