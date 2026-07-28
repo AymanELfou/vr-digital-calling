@@ -9,7 +9,7 @@ export const registerSchema = z.object({
   companyName: z.string().min(2, 'Company name must be at least 2 characters').max(100),
   phone: z
     .string()
-    .regex(/^(?:\+212|0)([567]\d{8})$/, 'Only Moroccan Phone Number accepted'),
+    .regex(/^(?:\+212|0)?([567]\d{8})$/, 'Only Moroccan Phone Number accepted'),
 })
 
 export const loginSchema = z.object({

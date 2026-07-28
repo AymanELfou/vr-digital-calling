@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
 import './index.css'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { RouterProvider, createBrowserRouter } from 'react-router-dom'
+
+import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { Toaster } from '@/components/ui/sonner'
 import { apiClient } from '@/lib/api'
@@ -12,7 +12,6 @@ import { useAuthStore } from '@/lib/auth.store'
 import { lazy, Suspense } from 'react'
 
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
-const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'))
 const DashboardPage = lazy(() => import('@/pages/company/DashboardPage'))
 const AIConfigPage = lazy(() => import('@/pages/company/AIConfigPage'))
 const KnowledgeBasePage = lazy(() => import('@/pages/company/KnowledgeBasePage'))
@@ -22,6 +21,9 @@ const ProfilePage = lazy(() => import('@/pages/company/ProfilePage'))
 const PhoneStatusPage  = lazy(() => import('@/pages/company/PhoneStatusPage'))
 const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage'))
 const CompaniesPage = lazy(() => import('@/pages/admin/CompaniesPage'))
+const AdminCallsPage = lazy(() => import('@/pages/admin/AdminCallsPage'))
+const LandingPage = lazy(() => import('@/pages/LandingPage'))
+const OurServicesPage = lazy(() => import('@/pages/OurServicesPage'))
 
 // ── Layout + Guards ────────────────────────────────────────────────────────────
 import { AppShell } from '@/components/layout/AppShell'
@@ -49,17 +51,20 @@ const queryClient = new QueryClient({
 // ── Router ────────────────────────────────────────────────────────────────────
 const router = createBrowserRouter([
   // Public routes
+  { path: '/', element: <Suspense fallback={<PageLoader />}><LandingPage /></Suspense> },
+  { path: '/landing', element: <Suspense fallback={<PageLoader />}><LandingPage /></Suspense> },
+  { path: '/services', element: <Suspense fallback={<PageLoader />}><OurServicesPage /></Suspense> },
   { path: '/login', element: <Suspense fallback={<PageLoader />}><LoginPage /></Suspense> },
-  { path: '/register', element: <Suspense fallback={<PageLoader />}><RegisterPage /></Suspense> },
+  { path: '/register', element: <Navigate to="/login" replace /> },
 
   // Company routes (requires authentication + COMPANY role)
   {
     element: <ProtectedRoute><AppShell /></ProtectedRoute>,
     children: [
-      { path: '/', element: <Suspense fallback={<PageLoader />}><DashboardPage /></Suspense> },
+      { path: '/dashboard', element: <Suspense fallback={<PageLoader />}><DashboardPage /></Suspense> },
       { path: '/ai-config', element: <Suspense fallback={<PageLoader />}><AIConfigPage /></Suspense> },
       { path: '/knowledge-base', element: <Suspense fallback={<PageLoader />}><KnowledgeBasePage /></Suspense> },
-      { path: '/services', element: <Suspense fallback={<PageLoader />}><ServicesPage /></Suspense> },
+      { path: '/company-services', element: <Suspense fallback={<PageLoader />}><ServicesPage /></Suspense> },
       { path: '/calls', element: <Suspense fallback={<PageLoader />}><CallHistoryPage /></Suspense> },
       { path: '/profile', element: <Suspense fallback={<PageLoader />}><ProfilePage /></Suspense> },
       { path: '/phone-status', element: <Suspense fallback={<PageLoader />}><PhoneStatusPage /></Suspense> },
@@ -72,6 +77,7 @@ const router = createBrowserRouter([
     children: [
       { path: '/admin', element: <Suspense fallback={<PageLoader />}><AdminDashboardPage /></Suspense> },
       { path: '/admin/companies', element: <Suspense fallback={<PageLoader />}><CompaniesPage /></Suspense> },
+      { path: '/admin/calls', element: <Suspense fallback={<PageLoader />}><AdminCallsPage /></Suspense> },
     ],
   },
 ])
@@ -106,7 +112,6 @@ export default function App() {
       <AuthInitializer />
       <RouterProvider router={router} />
       <Toaster richColors position="top-right" />
-      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   )
 }

@@ -81,34 +81,7 @@ export default function ProfilePage() {
     onError: (e) => toast.error(getErrorMessage(e)),
   })
 
-  const Field = ({
-    label, value, onChange, placeholder, type = 'text', hint, textarea = false,
-  }: {
-    label: string; value: string; onChange: (v: string) => void
-    placeholder?: string; type?: string; hint?: string; textarea?: boolean
-  }) => (
-    <div className="space-y-1.5">
-      <label className="text-sm font-medium text-foreground">{label}</label>
-      {textarea ? (
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          rows={3}
-          className="w-full rounded-lg bg-secondary border border-border px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition resize-none"
-        />
-      ) : (
-        <input
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full rounded-lg bg-secondary border border-border px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
-        />
-      )}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-    </div>
-  )
+
 
   if (isLoading) {
     return (
@@ -181,15 +154,15 @@ export default function ProfilePage() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Business Phone</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base select-none" title="Morocco">
-                  🇲🇦 <span className="text-muted-foreground ml-0.5 text-xs font-semibold">+212</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg select-none" title="Morocco">
+                  <img src="/morocco.png" alt="Morocco" className="w-5 h-5" />
                 </span>
                 <input
                   type="tel"
                   value={profile.phone}
                   onChange={(e) => setProfile(p => ({ ...p, phone: e.target.value }))}
-                  placeholder="0612345678"
-                  className="w-full rounded-lg bg-secondary border border-border pl-16 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
+                  placeholder="+212634847654"
+                  className="w-full rounded-lg bg-secondary border border-border pl-10 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition font-mono"
                 />
               </div>
             </div>
@@ -285,6 +258,50 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       )}
+    </div>
+  )
+}
+
+interface FieldProps {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  type?: string
+  hint?: string
+  textarea?: boolean
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = 'text',
+  hint,
+  textarea = false,
+}: FieldProps) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-sm font-medium text-foreground">{label}</label>
+      {textarea ? (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          rows={3}
+          className="w-full rounded-lg bg-secondary border border-border px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition resize-none"
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full rounded-lg bg-secondary border border-border px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition"
+        />
+      )}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   )
 }

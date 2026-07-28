@@ -132,7 +132,7 @@ export default function ServicesPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...payload }: { id: string; name: string; description: string; price: string; duration: string }) => {
-      const { data } = await apiClient.put(`/services/${id}`, {
+      const { data } = await apiClient.patch(`/services/${id}`, {
         ...payload,
         price: payload.price ? parseFloat(payload.price) : null,
         duration: payload.duration || null,
@@ -146,7 +146,7 @@ export default function ServicesPage() {
 
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const { data } = await apiClient.put(`/services/${id}`, { isActive })
+      const { data } = await apiClient.patch(`/services/${id}`, { isActive })
       return data
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['services'] }),
@@ -203,7 +203,7 @@ export default function ServicesPage() {
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-green-400" />
-            {activeCount} active (visible to AI)
+            {activeCount} active
           </span>
         </div>
       )}
@@ -240,8 +240,10 @@ export default function ServicesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
                       <h3 className="font-semibold text-foreground text-sm truncate">{service.name}</h3>
-                      {!service.isActive && (
-                        <Badge variant="outline" className="status-inactive text-xs">Inactive</Badge>
+                      {service.isActive ? (
+                        <Badge variant="outline" className="border-green-400/30 bg-green-400/10 text-green-400 text-xs">Enabled</Badge>
+                      ) : (
+                        <Badge variant="outline" className="border-red-400/30 bg-red-400/10 text-red-400 text-xs">Disabled</Badge>
                       )}
                     </div>
                     {service.description && (
@@ -266,16 +268,16 @@ export default function ServicesPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {/* Active toggle */}
+                  {/* Active toggle button */}
                   <button
                     onClick={() => toggleActiveMutation.mutate({ id: service.id, isActive: !service.isActive })}
                     className={`flex-1 text-xs py-1.5 rounded-lg border transition-all font-medium ${
                       service.isActive
-                        ? 'border-green-400/30 bg-green-400/10 text-green-400 hover:bg-green-400/20'
-                        : 'border-border bg-secondary text-muted-foreground hover:text-foreground'
+                        ? 'border-red-400/30 bg-red-400/10 text-red-400 hover:bg-red-400/20'
+                        : 'border-green-400/30 bg-green-400/10 text-green-400 hover:bg-green-400/20'
                     }`}
                   >
-                    {service.isActive ? '✓ Active' : 'Inactive'}
+                    {service.isActive ? 'Disable' : 'Enable'}
                   </button>
                   <button
                     onClick={() => setEditingService(service)}

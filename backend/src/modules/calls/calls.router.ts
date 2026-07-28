@@ -18,9 +18,15 @@ router.get('/', authenticate, requireCompany, async (req, res) => {
   const limit = Math.min(50, parseInt(req.query.limit as string) || 20)
   const skip = (page - 1) * limit
 
+  const status = req.query.status as string | undefined
+  const whereClause: any = { companyId: company.id }
+  if (status && ['COMPLETED', 'FAILED', 'MISSED'].includes(status)) {
+    whereClause.status = status
+  }
+
   const [calls, total] = await Promise.all([
     prisma.call.findMany({
-      where: { companyId: company.id },
+      where: whereClause,
       orderBy: { startedAt: 'desc' },
       take: limit,
       skip,
@@ -35,7 +41,7 @@ router.get('/', authenticate, requireCompany, async (req, res) => {
         // transcript excluded from list — too large, fetched individually
       },
     }),
-    prisma.call.count({ where: { companyId: company.id } }),
+    prisma.call.count({ where: whereClause }),
   ])
 
   res.json({
@@ -63,6 +69,26 @@ router.get('/:id', authenticate, requireCompany, async (req, res) => {
   if (!call) throw createError(404, 'Call not found')
 
   res.json(call)
+})
+
+// DELETE /api/calls/:id — delete call record
+router.delete('/:id', authenticate, requireCompany, async (req, res) => {
+  const company = await prisma.company.findUnique({
+    where: { userId: req.user!.sub },
+    select: { id: true },
+  })
+  if (!company) throw createError(404, 'Company not found')
+
+  const call = await prisma.call.findFirst({
+    where: { id: req.params.id, companyId: company.id },
+  })
+  if (!call) throw createError(404, 'Call not found')
+
+  await prisma.call.delete({
+    where: { id: req.params.id },
+  })
+
+  res.status(204).send()
 })
 
 export { router as callsRouter }

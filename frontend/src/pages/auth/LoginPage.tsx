@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Eye, EyeOff, Phone, Bot, Sparkles } from 'lucide-react'
+import { Eye, EyeOff, Phone, Bot, Sparkles, ArrowLeft, X, Mail, Copy } from 'lucide-react'
 import { apiClient, getErrorMessage } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth.store'
 import { Button } from '@/components/ui/button'
@@ -23,6 +23,7 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const { setAuth, setReady } = useAuthStore()
   const [showPassword, setShowPassword] = useState(false)
+  const [showAdminContactModal, setShowAdminContactModal] = useState(false)
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -33,7 +34,7 @@ export default function LoginPage() {
       const { data } = await apiClient.post<AuthResponse>('/auth/login', values)
       setAuth(data.user, data.company)
       setReady()
-      navigate(data.user.role === 'ADMIN' ? '/admin' : '/')
+      navigate(data.user.role === 'ADMIN' ? '/admin' : '/dashboard')
       toast.success(`Welcome back!`)
     } catch (err) {
       toast.error(getErrorMessage(err))
@@ -45,10 +46,15 @@ export default function LoginPage() {
       {/* Left — Branding panel */}
       <div className="hidden lg:flex lg:flex-1 flex-col justify-between p-12 bg-gradient-to-br from-primary/20 via-accent/10 to-transparent border-r border-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center animate-glow">
-            <span className="font-display font-bold text-white">VR</span>
+          <img
+            src="/logo.jpeg"
+            alt="VR Digital Calling"
+            className="w-10 h-10 rounded-xl object-cover shadow-md border border-primary/30 shrink-0"
+          />
+          <div>
+            <span className="font-display font-bold text-foreground text-lg leading-tight block">VR Digital</span>
+            <span className="text-xs text-primary font-semibold tracking-wider uppercase block">Calling Platform</span>
           </div>
-          <span className="font-display font-bold text-xl text-foreground">VR Digital Calling</span>
         </div>
 
         <div className="space-y-8">
@@ -78,18 +84,31 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-muted-foreground text-xs">© 2025 VR Digital. All rights reserved.</p>
+        <p className="text-muted-foreground text-xs">© 2026 VR Digital. All rights reserved.</p>
       </div>
 
       {/* Right — Login form */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 relative">
         <div className="w-full max-w-md space-y-8 animate-fade-in">
+          {/* Back button */}
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground font-medium transition-colors group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            Back to Home
+          </Link>
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-3 mb-8">
-            <div className="w-8 h-8 rounded-lg bg-gradient-brand flex items-center justify-center">
-              <span className="font-display font-bold text-white text-sm">VR</span>
+            <img
+              src="/logo.jpeg"
+              alt="VR Digital Calling"
+              className="w-9 h-9 rounded-xl object-cover shadow-md border border-primary/30 shrink-0"
+            />
+            <div>
+              <span className="font-display font-bold text-foreground text-base leading-tight block">VR Digital</span>
+              <span className="text-[10px] text-primary font-semibold tracking-wider uppercase block">Calling Platform</span>
             </div>
-            <span className="font-display font-bold text-foreground">VR Digital Calling</span>
           </div>
 
           <div>
@@ -99,7 +118,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email address</Label>
               <Input
@@ -149,13 +168,72 @@ export default function LoginPage() {
           </form>
 
           <p className="text-center text-sm text-muted-foreground">
-            Don't have an account?{' '}
-            <Link to="/register" className="text-primary hover:text-primary/80 font-medium transition-colors">
-              Create one for free
-            </Link>
+            Need an account?{' '}
+            <button
+              type="button"
+              onClick={() => setShowAdminContactModal(true)}
+              className="text-primary hover:underline font-semibold transition-colors"
+            >
+              Please contact the administrator.
+            </button>
           </p>
         </div>
       </div>
+
+      {/* Admin Contact Modal */}
+      {showAdminContactModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
+          <div className="glass-card w-full max-w-md p-6 rounded-3xl border border-white/20 shadow-2xl relative space-y-5 bg-[#15121a]">
+            <button
+              onClick={() => setShowAdminContactModal(false)}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground p-1 rounded-lg bg-white/5 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 border-b border-border/40 pb-4">
+              <img src="/logo.jpeg" alt="VR Digital" className="w-10 h-10 rounded-xl object-cover border border-primary/30 shrink-0" />
+              <div>
+                <h3 className="font-display font-bold text-foreground text-lg leading-tight">VR Digital Calling</h3>
+                <p className="text-xs text-primary font-semibold uppercase tracking-wider">Account Creation Request</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                To request a company account on the VR Digital Calling platform, please contact our system administration team. We will generate and set up your workspace credentials immediately.
+              </p>
+
+              <div className="p-4 rounded-2xl bg-secondary/60 border border-border flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <Mail className="w-5 h-5 text-primary shrink-0" />
+                  <span className="text-sm font-mono font-bold text-foreground truncate">admin@vrdigital.com</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText('admin@vrdigital.com')
+                    toast.success('Admin email copied to clipboard!')
+                  }}
+                  className="shrink-0 text-xs gap-1.5 border-white/10 hover:bg-white/10"
+                >
+                  <Copy className="w-3.5 h-3.5" /> Copy
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button
+                onClick={() => setShowAdminContactModal(false)}
+                className="bg-gradient-brand text-white text-xs px-6 rounded-full btn-glow"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

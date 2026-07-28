@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Bot, Save, Loader2, Mic, Globe, Sliders, Zap, BookOpen,
+  Bot, Save, Loader2, Mic, Globe, BookOpen,
   Info, ChevronDown,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -32,39 +32,7 @@ const LANGUAGES = [
   { code: 'pt', label: '🇵🇹 Portuguese' },
 ]
 
-// ─── Slider Component ─────────────────────────────────────────────────────────
-function SliderField({
-  label, value, min, max, step, onChange, format, hint,
-}: {
-  label: string; value: number; min: number; max: number; step: number
-  onChange: (v: number) => void; format: (v: number) => string; hint: string
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-foreground">{label}</label>
-        <span className="text-sm font-mono font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
-          {format(value)}
-        </span>
-      </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="w-full h-2 rounded-full appearance-none cursor-pointer
-          [&::-webkit-slider-track]:bg-secondary [&::-webkit-slider-track]:rounded-full
-          [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4
-          [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full
-          [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-lg
-          accent-primary"
-      />
-      <p className="text-xs text-muted-foreground">{hint}</p>
-    </div>
-  )
-}
+
 
 // ─── Toggle ───────────────────────────────────────────────────────────────────
 function Toggle({ label, hint, value, onChange }: {
@@ -132,6 +100,15 @@ export default function AIConfigPage() {
     }
   }, [config])
 
+  // ── Load live compiled prompt ──────────────────────────────────────────────
+  const { data: compiledData } = useQuery({
+    queryKey: ['ai-config-compiled'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/ai-config/compiled-prompt')
+      return data as { compiledPrompt: string; servicesCount: number; kbCount: number }
+    },
+  })
+
   // ── Save ───────────────────────────────────────────────────────────────────
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -141,6 +118,7 @@ export default function AIConfigPage() {
     onSuccess: () => {
       toast.success('AI configuration saved')
       qc.invalidateQueries({ queryKey: ['ai-config'] })
+      qc.invalidateQueries({ queryKey: ['ai-config-compiled'] })
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   })
@@ -218,12 +196,12 @@ export default function AIConfigPage() {
         </CardContent>
       </Card>
 
-      {/* Voice + Engine */}
+      {/* Voice & Rules */}
       <Card className="glass-card border-border">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
             <Mic size={16} className="text-primary" />
-            Voice & Engine
+            Voice & Rules
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -249,34 +227,19 @@ export default function AIConfigPage() {
             </div>
           </div>
 
-          {/* Engine toggle */}
-          <div>
-            <p className="text-sm font-medium text-foreground mb-2">AI Engine</p>
-            <div className="flex rounded-xl bg-secondary border border-border p-1 gap-1">
-              {(['realtime', 'chat_tts'] as AiEngine[]).map((e) => (
-                <button
-                  key={e}
-                  onClick={() => set('engine')(e)}
-                  className={`flex-1 rounded-lg py-2 text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                    form.engine === e
-                      ? 'bg-primary text-white shadow-lg'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <Zap size={13} />
-                  {e === 'realtime' ? 'Realtime (Production)' : 'Chat+TTS (Dev)'}
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              <strong className="text-foreground">Realtime</strong> — uses OpenAI Realtime API for live calls.{' '}
-              <strong className="text-foreground">Chat+TTS</strong> — fallback for development testing.
-            </p>
+          {/* Allow General Knowledge Toggle */}
+          <div className="pt-4 border-t border-border">
+            <Toggle
+              label="Allow General Knowledge"
+              hint="When enabled, the AI can answer off-topic questions using its general knowledge in addition to your company data."
+              value={form.allowGeneral}
+              onChange={set('allowGeneral')}
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* Language + Advanced */}
+      {/* Language */}
       <Card className="glass-card border-border">
         <CardHeader className="pb-3">
           <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
@@ -303,80 +266,31 @@ export default function AIConfigPage() {
         </CardContent>
       </Card>
 
-      {/* Advanced Settings */}
-      <Card className="glass-card border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-            <Sliders size={16} className="text-primary" />
-            Advanced Settings
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <SliderField
-            label="Temperature"
-            value={form.temperature}
-            min={0}
-            max={1}
-            step={0.05}
-            onChange={set('temperature')}
-            format={(v) => v.toFixed(2)}
-            hint="Lower = more consistent and factual. Higher = more creative and varied responses."
-          />
-          <SliderField
-            label="Max Tokens per Response"
-            value={form.maxTokens}
-            min={256}
-            max={8192}
-            step={256}
-            onChange={(v) => set('maxTokens')(Math.round(v))}
-            format={(v) => v.toLocaleString()}
-            hint="Maximum tokens the AI generates per response turn. Higher = longer answers."
-          />
-          <SliderField
-            label="Silence Detection (ms)"
-            value={form.silenceMs}
-            min={200}
-            max={2000}
-            step={100}
-            onChange={(v) => set('silenceMs')(Math.round(v))}
-            format={(v) => `${v}ms`}
-            hint="How long to wait after caller stops speaking before AI responds. Shorter = snappier."
-          />
-          <div className="pt-2 border-t border-border">
-            <Toggle
-              label="Allow General Knowledge"
-              hint="When enabled, the AI can answer off-topic questions using its general knowledge in addition to your company data."
-              value={form.allowGeneral}
-              onChange={set('allowGeneral')}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Prompt Preview */}
       <Card className="glass-card border-border border-primary/20">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              What the AI receives
-            </CardTitle>
-            <Badge variant="outline" className="text-primary border-primary/30 text-xs">Preview</Badge>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                What the AI receives
+              </CardTitle>
+              {(compiledData?.servicesCount ?? 0) > 0 && (
+                <Badge variant="outline" className="text-[11px] text-green-400 border-green-400/30 bg-green-400/10">
+                  {compiledData?.servicesCount} Active Service(s)
+                </Badge>
+              )}
+              {(compiledData?.kbCount ?? 0) > 0 && (
+                <Badge variant="outline" className="text-[11px] text-primary border-primary/30 bg-primary/10">
+                  {compiledData?.kbCount} FAQ Entry(s)
+                </Badge>
+              )}
+            </div>
+            <Badge variant="outline" className="text-primary border-primary/30 text-xs">Live System Prompt</Badge>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-lg bg-secondary/50 border border-border p-3 font-mono text-xs text-muted-foreground leading-relaxed space-y-1">
-            <p className="text-foreground">{form.systemPrompt.slice(0, 200)}{form.systemPrompt.length > 200 ? '...' : ''}</p>
-            <p className="text-primary/60">{'[Company Information injected here]'}</p>
-            <p className="text-primary/60">{'[Services list injected here]'}</p>
-            <p className="text-primary/60">{'[Knowledge Base / FAQ injected here]'}</p>
-            <p className="text-primary/60">
-              {form.allowGeneral
-                ? '[General knowledge: allowed]'
-                : '[General knowledge: restricted — company data only]'}
-            </p>
-            <p className="text-primary/60">
-              {`[Language: ${form.language === 'auto' ? 'auto-detected from caller' : form.language}]`}
-            </p>
+          <div className="rounded-xl bg-secondary/70 border border-border p-4 font-mono text-xs text-foreground leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto shadow-inner">
+            {compiledData?.compiledPrompt || form.systemPrompt}
           </div>
         </CardContent>
       </Card>

@@ -1,14 +1,15 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Phone, Clock, ChevronLeft, ChevronRight, X,
-  CheckCircle, XCircle, PhoneMissed, MessageSquare,
+  CheckCircle, XCircle, PhoneMissed, MessageSquare, Trash2,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { apiClient } from '@/lib/api'
+import { apiClient, getErrorMessage } from '@/lib/api'
+import { toast } from 'sonner'
 import type { Call, CallDetail, TranscriptEntry, PaginatedResponse } from '@/lib/types'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -134,10 +135,11 @@ function TranscriptModal({ call, onClose }: { call: Call; onClose: () => void })
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function CallHistoryPage() {
+  const qc = useQueryClient()
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('')
   const [selectedCall, setSelectedCall] = useState<Call | null>(null)
-  const LIMIT = 15
+  const LIMIT = 5
 
   const { data, isLoading } = useQuery<PaginatedResponse<Call>>({
     queryKey: ['calls', page, statusFilter],
@@ -147,6 +149,15 @@ export default function CallHistoryPage() {
       const { data } = await apiClient.get(`/calls?${params.toString()}`)
       return data
     },
+  })
+
+  const deleteCallMutation = useMutation({
+    mutationFn: async (id: string) => apiClient.delete(`/calls/${id}`),
+    onSuccess: () => {
+      toast.success('Call record deleted')
+      qc.invalidateQueries({ queryKey: ['calls'] })
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
   })
 
   const calls = data?.data ?? []
@@ -163,15 +174,15 @@ export default function CallHistoryPage() {
           </div>
           Call History
         </h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-muted-foreground mt-2 text-sm">
           All calls received by your AI voice agent. Click a row to view the full transcript.
         </p>
       </div>
 
       {/* Filters + Stats */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex gap-2">
-          {['', 'COMPLETED', 'FAILED', 'MISSED', 'NO_ANSWER'].map((s) => (
+        <div className="flex gap-2 flex-wrap">
+          {['', 'COMPLETED', 'FAILED', 'MISSED'].map((s) => (
             <button
               key={s}
               onClick={() => { setStatusFilter(s); setPage(1) }}
@@ -192,28 +203,24 @@ export default function CallHistoryPage() {
         )}
       </div>
 
-      {/* Table */}
+      {/* Table & Cards */}
       <Card className="glass-card border-border overflow-hidden">
-        <CardHeader className="pb-0 px-0">
-          {/* Column headers */}
+        {/* Column headers (Desktop only) */}
+        <CardHeader className="pb-0 px-0 hidden sm:block">
           <div className="grid grid-cols-12 gap-3 px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">
             <div className="col-span-3">Caller</div>
             <div className="col-span-3">Date</div>
             <div className="col-span-2">Duration</div>
             <div className="col-span-2">Status</div>
-            <div className="col-span-2 text-right">Transcript</div>
+            <div className="col-span-2 text-right">Actions</div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="space-y-0 divide-y divide-border">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="grid grid-cols-12 gap-3 px-5 py-4">
-                  <Skeleton className="col-span-3 h-4" />
-                  <Skeleton className="col-span-3 h-4" />
-                  <Skeleton className="col-span-2 h-4" />
-                  <Skeleton className="col-span-2 h-4" />
-                  <Skeleton className="col-span-2 h-4 ml-auto w-20" />
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="p-4 sm:px-5 sm:py-4">
+                  <Skeleton className="h-10 w-full" />
                 </div>
               ))}
             </div>
@@ -232,46 +239,95 @@ export default function CallHistoryPage() {
               {calls.map((call) => {
                 const StatusIcon = STATUS_ICONS[call.status] ?? Phone
                 return (
-                  <div
-                    key={call.id}
-                    className="grid grid-cols-12 gap-3 px-5 py-4 items-center hover:bg-secondary/30 transition-colors"
-                  >
-                    {/* Caller */}
-                    <div className="col-span-3 flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <Phone size={12} className="text-primary" />
+                  <div key={call.id} className="hover:bg-secondary/30 transition-colors">
+                    {/* Desktop row */}
+                    <div className="hidden sm:grid grid-cols-12 gap-3 px-5 py-4 items-center">
+                      <div className="col-span-3 flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <Phone size={12} className="text-primary" />
+                        </div>
+                        <span className="text-sm font-mono text-foreground truncate">{call.callerNumber}</span>
                       </div>
-                      <span className="text-sm font-mono text-foreground truncate">{call.callerNumber}</span>
+
+                      <div className="col-span-3 text-sm text-muted-foreground">
+                        {formatDate(call.startedAt)}
+                      </div>
+
+                      <div className="col-span-2 text-sm text-muted-foreground flex items-center gap-1">
+                        <Clock size={12} />
+                        {formatDuration(call.duration)}
+                      </div>
+
+                      <div className="col-span-2">
+                        <Badge className={`text-xs gap-1 ${STATUS_STYLES[call.status] ?? 'status-inactive'}`}>
+                          <StatusIcon size={10} />
+                          {call.status.replace('_', ' ')}
+                        </Badge>
+                      </div>
+
+                      <div className="col-span-2 flex justify-end gap-1.5">
+                        <button
+                          onClick={() => setSelectedCall(call)}
+                          className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition px-2 py-1 rounded-lg hover:bg-primary/10 border border-primary/20"
+                        >
+                          <MessageSquare size={12} />
+                          View
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm('Delete this call record?')) {
+                              deleteCallMutation.mutate(call.id)
+                            }
+                          }}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition border border-transparent hover:border-border/20"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Date */}
-                    <div className="col-span-3 text-sm text-muted-foreground">
-                      {formatDate(call.startedAt)}
-                    </div>
+                    {/* Mobile stacked card layout */}
+                    <div className="sm:hidden p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <Phone size={12} className="text-primary" />
+                          </div>
+                          <span className="text-sm font-mono font-medium text-foreground truncate">{call.callerNumber}</span>
+                        </div>
+                        <Badge className={`text-xs gap-1 shrink-0 ${STATUS_STYLES[call.status] ?? 'status-inactive'}`}>
+                          <StatusIcon size={10} />
+                          {call.status.replace('_', ' ')}
+                        </Badge>
+                      </div>
 
-                    {/* Duration */}
-                    <div className="col-span-2 text-sm text-muted-foreground flex items-center gap-1">
-                      <Clock size={12} />
-                      {formatDuration(call.duration)}
-                    </div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/40">
+                        <span className="flex items-center gap-1">
+                          <Clock size={12} />
+                          {formatDuration(call.duration)}
+                        </span>
+                        <span>{formatDate(call.startedAt)}</span>
+                      </div>
 
-                    {/* Status */}
-                    <div className="col-span-2">
-                      <Badge className={`text-xs gap-1 ${STATUS_STYLES[call.status] ?? 'status-inactive'}`}>
-                        <StatusIcon size={10} />
-                        {call.status.replace('_', ' ')}
-                      </Badge>
-                    </div>
-
-                    {/* Transcript button */}
-                    <div className="col-span-2 flex justify-end">
-                      <button
-                        onClick={() => setSelectedCall(call)}
-                        className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition px-2.5 py-1.5 rounded-lg hover:bg-primary/10 border border-primary/20"
-                      >
-                        <MessageSquare size={12} />
-                        View
-                      </button>
+                      <div className="flex gap-2 justify-end pt-1">
+                        <button
+                          onClick={() => setSelectedCall(call)}
+                          className="flex-1 flex items-center justify-center gap-1.5 text-xs text-primary hover:text-primary/80 transition py-1.5 rounded-lg bg-primary/10 border border-primary/20 font-medium"
+                        >
+                          <MessageSquare size={13} />
+                          View Transcript
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm('Delete this call record?')) {
+                              deleteCallMutation.mutate(call.id)
+                            }
+                          }}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition border border-border/40"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )

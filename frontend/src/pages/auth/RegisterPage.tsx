@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { apiClient, getErrorMessage } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth.store'
 import { Button } from '@/components/ui/button'
@@ -47,7 +47,7 @@ export default function RegisterPage() {
       })
       setAuth(data.user, data.company)
       setReady()
-      navigate('/')
+      navigate('/dashboard')
       toast.success('Account created! Welcome to VR Digital Calling.')
     } catch (err) {
       toast.error(getErrorMessage(err))
@@ -56,13 +56,27 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-background">
-      <div className="w-full max-w-md animate-fade-in">
+      <div className="w-full max-w-md animate-fade-in space-y-6">
+        {/* Back button */}
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground font-medium transition-colors group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          Back to Home
+        </Link>
+
         {/* Logo */}
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-8 h-8 rounded-lg bg-gradient-brand flex items-center justify-center animate-glow">
-            <span className="font-display font-bold text-white text-sm">VR</span>
+          <img
+            src="/logo.jpeg"
+            alt="VR Digital Calling"
+            className="w-10 h-10 rounded-xl object-cover shadow-md border border-primary/30 shrink-0"
+          />
+          <div>
+            <span className="font-display font-bold text-foreground text-lg leading-tight block">VR Digital</span>
+            <span className="text-xs text-primary font-semibold tracking-wider uppercase block">Calling Platform</span>
           </div>
-          <span className="font-display font-bold text-foreground">VR Digital Calling</span>
         </div>
 
         <div className="glass-card p-8 space-y-6">
@@ -128,14 +142,15 @@ export default function RegisterPage() {
             <div className="space-y-2">
               <Label htmlFor="phone">Phone number</Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base select-none" title="Morocco">
-                  🇲🇦 <span className="text-muted-foreground ml-0.5 text-xs font-semibold">+212</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg select-none flex items-center gap-1.5" title="Morocco">
+                  <img src="/morocco.png" alt="Morocco" className="w-5 h-5 rounded-full object-cover" />
+                  <span className="text-muted-foreground text-xs font-mono font-semibold">+212</span>
                 </span>
                 <Input
                   id="phone"
                   type="tel"
-                  placeholder="0612345678"
-                  className="bg-secondary border-border pl-16"
+                  placeholder="634847654"
+                  className="bg-secondary border-border pl-20 font-mono text-foreground placeholder:text-muted-foreground"
                   {...register('phone')}
                 />
               </div>

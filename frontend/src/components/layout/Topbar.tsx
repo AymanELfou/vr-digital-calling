@@ -1,6 +1,6 @@
-import { Menu, Bell } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useUser } from '@/lib/auth.store'
+import { useUser, useCompany } from '@/lib/auth.store'
 
 interface TopbarProps {
   onMenuClick: () => void
@@ -8,9 +8,12 @@ interface TopbarProps {
 
 export function Topbar({ onMenuClick }: TopbarProps) {
   const user = useUser()
+  const company = useCompany()
+
+  const displayName = company?.name || user?.email || 'User'
 
   return (
-    <header className="h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 flex-shrink-0">
+    <header className="h-14 bg-card/30 backdrop-blur-md flex items-center justify-between px-4 flex-shrink-0">
       {/* Mobile menu button */}
       <Button
         variant="ghost"
@@ -26,18 +29,14 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
       {/* Right side */}
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="w-4 h-4" />
-        </Button>
-
-        <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-secondary border border-border">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-secondary/80 border border-border/40 shadow-sm">
           <div className="w-6 h-6 rounded-full bg-gradient-brand flex items-center justify-center">
             <span className="text-white text-xs font-bold">
-              {user?.email?.[0]?.toUpperCase() ?? 'U'}
+              {displayName?.[0]?.toUpperCase() ?? 'U'}
             </span>
           </div>
-          <span className="text-sm text-foreground hidden sm:block max-w-32 truncate">
-            {user?.email}
+          <span className="text-sm font-medium text-foreground hidden sm:block max-w-36 truncate">
+            {displayName}
           </span>
         </div>
       </div>

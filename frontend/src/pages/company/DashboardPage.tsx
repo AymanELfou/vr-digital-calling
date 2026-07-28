@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { Phone, PhoneCall, CheckCircle, TrendingUp } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Phone, PhoneCall, CheckCircle, TrendingUp, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -50,9 +51,9 @@ export default function DashboardPage() {
   const { user } = useAuthStore()
 
   const { data: callsData, isLoading } = useQuery({
-    queryKey: ['calls', { page: 1, limit: 5 }],
+    queryKey: ['calls', { page: 1, limit: 4 }],
     queryFn: async () => {
-      const { data } = await apiClient.get<PaginatedResponse<Call>>('/calls?page=1&limit=5')
+      const { data } = await apiClient.get<PaginatedResponse<Call>>('/calls?page=1&limit=4')
       return data
     },
   })
@@ -65,7 +66,7 @@ export default function DashboardPage() {
     },
   })
 
-  const calls = callsData?.data ?? []
+  const calls = (callsData?.data ?? []).slice(0, 4)
   const totalCalls = callsData?.pagination.total ?? 0
   const completedCalls = calls.filter((c) => c.status === 'COMPLETED').length
   const hasAiConfig = !!profileData?.aiConfig
@@ -126,7 +127,7 @@ export default function DashboardPage() {
           title="Completed Calls"
           value={isLoading ? '—' : completedCalls}
           icon={CheckCircle}
-          trend="From last 5 calls"
+          trend="From last calls"
           color="green"
         />
         <StatCard
@@ -139,8 +140,15 @@ export default function DashboardPage() {
 
       {/* Recent calls */}
       <Card className="glass-card border-border">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-base font-semibold">Recent Calls</CardTitle>
+          <Link
+            to="/calls"
+            className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition"
+          >
+            View All
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </CardHeader>
         <CardContent>
           {isLoading ? (

@@ -16,7 +16,7 @@ const updateCompanySchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
   phone: z
     .string()
-    .regex(/^(?:\+212|0)([567]\d{8})$/, 'Only Moroccan Phone Number accepted')
+    .regex(/^(?:\+212|0)?([567]\d{8})$/, 'Only Moroccan Phone Number accepted')
     .optional(),
 })
 

@@ -40,6 +40,7 @@ router.post('/', authenticate, requireCompany, async (req, res) => {
   const item = await prisma.knowledgeBase.create({
     data: { companyId, ...input },
   })
+  await prisma.company.update({ where: { id: companyId }, data: { updatedAt: new Date() } }).catch(() => {})
   res.status(201).json(item)
 })
 
@@ -57,6 +58,25 @@ router.patch('/:id', authenticate, requireCompany, async (req, res) => {
     where: { id: req.params.id },
     data: input,
   })
+  await prisma.company.update({ where: { id: companyId }, data: { updatedAt: new Date() } }).catch(() => {})
+  res.json(updated)
+})
+
+// PUT /api/knowledge-base/:id (alias for PATCH)
+router.put('/:id', authenticate, requireCompany, async (req, res) => {
+  const input = kbSchema.partial().parse(req.body)
+  const companyId = await getCompanyId(req.user!.sub)
+
+  const existing = await prisma.knowledgeBase.findFirst({
+    where: { id: req.params.id, companyId },
+  })
+  if (!existing) throw createError(404, 'Knowledge base entry not found')
+
+  const updated = await prisma.knowledgeBase.update({
+    where: { id: req.params.id },
+    data: input,
+  })
+  await prisma.company.update({ where: { id: companyId }, data: { updatedAt: new Date() } }).catch(() => {})
   res.json(updated)
 })
 
@@ -69,6 +89,7 @@ router.delete('/:id', authenticate, requireCompany, async (req, res) => {
   if (!existing) throw createError(404, 'Knowledge base entry not found')
 
   await prisma.knowledgeBase.delete({ where: { id: req.params.id } })
+  await prisma.company.update({ where: { id: companyId }, data: { updatedAt: new Date() } }).catch(() => {})
   res.status(204).send()
 })
 

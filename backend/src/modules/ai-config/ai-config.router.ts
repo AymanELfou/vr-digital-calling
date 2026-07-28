@@ -17,6 +17,7 @@ import { Router } from 'express'
 import { authenticate } from '../../middleware/auth.middleware'
 import { requireCompany } from '../../middleware/role.middleware'
 import { prisma } from '../../services/prisma.service'
+import { buildSystemPrompt } from '../../services/prompt-builder.service'
 import { createError } from '../../middleware/error.middleware'
 import { z } from 'zod'
 
@@ -124,6 +125,34 @@ router.patch('/', authenticate, requireCompany, async (req, res) => {
   })
 
   res.json(config)
+})
+
+// GET /api/ai-config/compiled-prompt
+// Returns the fully compiled system prompt including company info, active services, and KB entries
+router.get('/compiled-prompt', authenticate, requireCompany, async (req, res) => {
+  const companyId = await getCompanyId(req.user!.sub)
+
+  const config = await prisma.aiConfig.findUnique({
+    where: { companyId },
+  })
+
+  if (!config) {
+    res.json({ compiledPrompt: '', servicesCount: 0, kbCount: 0 })
+    return
+  }
+
+  const compiledPrompt = await buildSystemPrompt(companyId, config.allowGeneral)
+
+  const [servicesCount, kbCount] = await Promise.all([
+    prisma.service.count({ where: { companyId, isActive: true } }),
+    prisma.knowledgeBase.count({ where: { companyId, isActive: true } }),
+  ])
+
+  res.json({
+    compiledPrompt,
+    servicesCount,
+    kbCount,
+  })
 })
 
 // GET /api/ai-config/voices
