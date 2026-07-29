@@ -24,12 +24,14 @@ import { callsRouter } from './modules/calls/calls.router'
 import { adminRouter } from './modules/admin/admin.router'
 import { twilioWebhookRouter } from './modules/twilio/twilio.router'
 import { devRouter } from './modules/twilio/twilio.ws'
+import rateLimit from 'express-rate-limit'
 
 const app = express()
 
+// Trust proxy for rate limiting behind Docker / reverse proxies
+app.set('trust proxy', 1)
+
 // ─── Security headers ─────────────────────────────────────────────────────────
-// Helmet sets security-related HTTP headers (CSP, HSTS, etc.)
-// ContentSecurityPolicy is relaxed because Twilio needs to POST to our webhooks
 app.use(
   helmet({
     contentSecurityPolicy: false, // Twilio webhook validation needs flexibility
@@ -37,7 +39,6 @@ app.use(
 )
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
-// In production, restrict origin to the frontend domain
 const allowedOrigins =
   env.NODE_ENV === 'production'
     ? [process.env.FRONTEND_URL ?? 'https://yourapp.com']
@@ -55,6 +56,26 @@ app.use(
 app.use(express.json())
 app.use(express.urlencoded({ extended: true })) // Required for Twilio webhook (form-encoded)
 app.use(cookieParser())
+
+// ─── Security Rate Limiters ───────────────────────────────────────────────────
+const generalApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many API requests from this IP, please try again after 15 minutes' },
+})
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 25,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login/registration attempts, please try again after 15 minutes' },
+})
+
+app.use('/api/auth/login', authLimiter)
+app.use('/api', generalApiLimiter)
 
 // ─── Logging ──────────────────────────────────────────────────────────────────
 if (env.NODE_ENV !== 'test') {

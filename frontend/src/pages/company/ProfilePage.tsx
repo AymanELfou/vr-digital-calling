@@ -40,11 +40,14 @@ export default function ProfilePage() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async () => {
-      const moroccanPhoneRegex = /^(?:\+212|0)([567]\d{8})$/
-      if (profile.phone && !moroccanPhoneRegex.test(profile.phone)) {
+      const moroccanPhoneRegex = /^(?:\+212|0)?([567]\d{8})$/
+      if (profile.phone && profile.phone.trim() !== '' && !moroccanPhoneRegex.test(profile.phone.trim())) {
         throw new Error('Only Moroccan Phone Number accepted')
       }
-      const { data } = await apiClient.put('/company/profile', profile)
+      const { data } = await apiClient.put('/company/profile', {
+        ...profile,
+        phone: profile.phone ? profile.phone.trim() : '',
+      })
       return data
     },
     onSuccess: () => {

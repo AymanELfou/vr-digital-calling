@@ -199,10 +199,26 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground leading-relaxed">
+            <div className="space-y-4">
+              <p className="text-sm text-slate-200 leading-relaxed font-medium">
                 To request a company account on the VR Digital Calling platform, please contact our system administration team. We will generate and set up your workspace credentials immediately.
               </p>
+
+              <div className="p-3.5 rounded-2xl bg-primary/10 border border-primary/20 space-y-2">
+                <span className="text-xs font-semibold text-primary uppercase tracking-wider block">
+                  Required Info to Include:
+                </span>
+                <ul className="text-xs text-slate-200 space-y-1.5 font-medium">
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                    <span><strong className="text-white">Company Name</strong></span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                    <span><strong className="text-white">Business Phone</strong></span>
+                  </li>
+                </ul>
+              </div>
 
               <div className="p-4 rounded-2xl bg-secondary/60 border border-border flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 overflow-hidden">

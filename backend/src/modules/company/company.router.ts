@@ -9,15 +9,16 @@ import { z } from 'zod'
 const router = Router()
 
 const updateCompanySchema = z.object({
-  name: z.string().min(2).max(100).optional(),
-  description: z.string().max(2000).optional(),
-  address: z.string().max(500).optional(),
-  website: z.string().url().optional().or(z.literal('')),
-  email: z.string().email().optional().or(z.literal('')),
+  name: z.string().min(2, 'Name must be at least 2 characters').max(100).optional(),
+  description: z.string().max(2000).optional().or(z.literal('')),
+  address: z.string().max(500).optional().or(z.literal('')),
+  website: z.string().url('Invalid website URL').optional().or(z.literal('')),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
   phone: z
     .string()
     .regex(/^(?:\+212|0)?([567]\d{8})$/, 'Only Moroccan Phone Number accepted')
-    .optional(),
+    .optional()
+    .or(z.literal('')),
 })
 
 // GET /api/company/profile

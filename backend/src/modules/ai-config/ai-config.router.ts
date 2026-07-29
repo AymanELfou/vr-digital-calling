@@ -45,8 +45,6 @@ const updateAiConfigSchema = z.object({
       'Language must be "auto" or a valid ISO 639-1 code (e.g. "fr", "en", "ar")',
     )
     .optional(),
-  maxTokens: z.number().int().min(256).max(8192).optional(),
-  silenceMs: z.number().int().min(100).max(2000).optional(),
 })
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -76,8 +74,6 @@ router.get('/', authenticate, requireCompany, async (req, res) => {
       temperature: true,
       engine: true,
       language: true,
-      maxTokens: true,
-      silenceMs: true,
       updatedAt: true,
     },
   })
@@ -107,8 +103,6 @@ router.patch('/', authenticate, requireCompany, async (req, res) => {
       temperature: input.temperature ?? 0.6,
       engine: input.engine ?? 'realtime',
       language: input.language ?? 'auto',
-      maxTokens: input.maxTokens ?? 4096,
-      silenceMs: input.silenceMs ?? 500,
     },
     select: {
       id: true,
@@ -118,8 +112,6 @@ router.patch('/', authenticate, requireCompany, async (req, res) => {
       temperature: true,
       engine: true,
       language: true,
-      maxTokens: true,
-      silenceMs: true,
       updatedAt: true,
     },
   })

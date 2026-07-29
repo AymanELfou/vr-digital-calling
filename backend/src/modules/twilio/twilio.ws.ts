@@ -36,8 +36,6 @@ interface CompanyCallConfig {
   systemPrompt: string
   voice: string
   temperature: number
-  silenceMs: number
-  maxTokens: number
   allowGeneral: boolean
   language: string
   engine: string
@@ -64,8 +62,6 @@ async function loadCompanyConfig(companyId: string): Promise<CompanyCallConfig |
     systemPrompt,
     voice: aiConfig.voice,
     temperature: aiConfig.temperature,
-    silenceMs: aiConfig.silenceMs,
-    maxTokens: aiConfig.maxTokens,
     allowGeneral: aiConfig.allowGeneral,
     language: aiConfig.language,
     engine: aiConfig.engine,
@@ -95,6 +91,10 @@ export class TwilioWsHandler {
   // Idle timeout — if no audio for 30s after call start, clean up
   private idleTimeout: ReturnType<typeof setTimeout> | null = null
   private readonly IDLE_TIMEOUT_MS = 30_000
+
+  // Hard call duration limit — max 2 minutes (120 seconds) per call
+  private maxDurationTimer: ReturnType<typeof setTimeout> | null = null
+  private readonly MAX_CALL_DURATION_MS = 120_000 // 2 minutes (120,000 ms)
 
   constructor(twilioWs: WebSocket, callSid: string) {
     this.twilioWs = twilioWs
@@ -171,6 +171,9 @@ export class TwilioWsHandler {
 
         // Load company config and connect to OpenAI
         await this.initOpenAi()
+
+        // Start hard 2-minute (120s) call limit timer
+        this.startMaxDurationTimer()
         break
       }
 
@@ -251,7 +254,7 @@ export class TwilioWsHandler {
                 type: 'server_vad',             // Automatic voice activity detection
                 threshold: 0.5,                 // VAD sensitivity
                 prefix_padding_ms: 300,         // Pre-speech buffer
-                silence_duration_ms: config.silenceMs, // End-of-speech detection
+                silence_duration_ms: 500, // End-of-speech detection (500ms)
               },
             },
             output: {
@@ -403,6 +406,11 @@ export class TwilioWsHandler {
       this.idleTimeout = null
     }
 
+    if (this.maxDurationTimer) {
+      clearTimeout(this.maxDurationTimer)
+      this.maxDurationTimer = null
+    }
+
     const endedAt = new Date()
     const duration = Math.round((endedAt.getTime() - this.startedAt.getTime()) / 1000)
 
@@ -415,7 +423,7 @@ export class TwilioWsHandler {
             status,
             duration,
             endedAt,
-            transcript: this.transcript.length > 0 ? (this.transcript as object[]) : undefined,
+            transcript: this.transcript.length > 0 ? JSON.stringify(this.transcript) : undefined,
           },
         })
         console.log(
@@ -435,6 +443,37 @@ export class TwilioWsHandler {
     // Remove from active sessions
     activeSessions.delete(this.callSid)
     console.log(`[WS:${this.callSid}] Session cleaned up. Active sessions: ${activeSessions.size}`)
+  }
+
+  // ─── Hard 2-Minute Call Duration Enforcer ──────────────────────────────────
+
+  private startMaxDurationTimer(): void {
+    if (this.maxDurationTimer) clearTimeout(this.maxDurationTimer)
+    this.maxDurationTimer = setTimeout(() => {
+      console.log(`[WS:${this.callSid}] ⏱️ Maximum call duration (2 minutes / 120s) reached. Gracefully terminating call...`)
+
+      // Request OpenAI to deliver a polite conclusion audio before hanging up
+      if (this.isOpenAiReady && this.openAiWs?.readyState === WebSocket.OPEN) {
+        try {
+          this.sendToOpenAi({
+            type: 'response.create',
+            response: {
+              instructions: 'Politely inform the caller: "Our 2-minute call limit has been reached. Thank you for calling VR Digital! Goodbye!" and then finish speaking.',
+            },
+          })
+        } catch (err) {
+          console.error(`[WS:${this.callSid}] Error sending conclusion audio command:`, err)
+        }
+      }
+
+      // Close Twilio stream after 3.5s to play final audio response
+      setTimeout(() => {
+        if (this.twilioWs.readyState === WebSocket.OPEN) {
+          console.log(`[WS:${this.callSid}] Closing Twilio WebSocket (2-minute limit enforced)`)
+          this.twilioWs.close()
+        }
+      }, 3500)
+    }, this.MAX_CALL_DURATION_MS)
   }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
