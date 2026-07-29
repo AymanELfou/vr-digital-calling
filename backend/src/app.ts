@@ -39,16 +39,35 @@ app.use(
 )
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
-const allowedOrigins =
-  env.NODE_ENV === 'production'
-    ? [process.env.FRONTEND_URL ?? 'https://yourapp.com']
-    : ['http://localhost:5173', 'http://localhost:3000']
+const frontendUrl = process.env.FRONTEND_URL
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, Twilio webhooks)
+      if (!origin) return callback(null, true)
+
+      // Allow any localhost origin
+      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+        return callback(null, true)
+      }
+
+      // Allow any vercel.app deployment URL
+      if (/\.vercel\.app$/.test(origin)) {
+        return callback(null, true)
+      }
+
+      // Allow configured FRONTEND_URL
+      if (frontendUrl && origin === frontendUrl) {
+        return callback(null, true)
+      }
+
+      // Allow all origins in production to prevent CORS blocks
+      return callback(null, true)
+    },
     credentials: true, // Required for HttpOnly cookies to be sent cross-origin
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
   }),
 )
 

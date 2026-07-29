@@ -29,10 +29,11 @@ function generateToken(userId: string, email: string, role: string): string {
  * This prevents JavaScript from reading the token (XSS protection).
  */
 function setAuthCookie(res: Response, token: string): void {
+  const isProd = env.NODE_ENV === 'production'
   res.cookie('access_token', token, {
     httpOnly: true,
-    secure: env.NODE_ENV === 'production', // HTTPS only in production
-    sameSite: 'strict',
+    secure: isProd, // HTTPS only in production
+    sameSite: isProd ? 'none' : 'lax', // Required for cross-site Vercel <-> Render cookies
     maxAge: COOKIE_MAX_AGE,
     path: '/',
   })
@@ -188,6 +189,12 @@ export const authService = {
    * Clears the auth cookie (logout).
    */
   logout(res: Response): void {
-    res.clearCookie('access_token', { path: '/' })
+    const isProd = env.NODE_ENV === 'production'
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
+      path: '/',
+    })
   },
 }
