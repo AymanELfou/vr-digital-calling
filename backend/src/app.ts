@@ -28,69 +28,54 @@ import rateLimit from 'express-rate-limit'
 
 const app = express()
 
-// Trust proxy for rate limiting behind Docker / reverse proxies
+// Trust proxy for rate limiting behind Docker / reverse proxies / Render
 app.set('trust proxy', 1)
 
-// ─── Security headers ─────────────────────────────────────────────────────────
+// ─── 1. CORS Configuration (MUST BE FIRST) ──────────────────────────────────
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Dynamically allow all origins with credentials (Vercel, localhost, etc.)
+    callback(null, true)
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie', 'Accept'],
+  optionsSuccessStatus: 204,
+}
+
+app.use(cors(corsOptions))
+app.options('*', cors(corsOptions))
+
+// ─── 2. Security headers ─────────────────────────────────────────────────────
 app.use(
   helmet({
-    contentSecurityPolicy: false, // Twilio webhook validation needs flexibility
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: false,
   }),
 )
 
-// ─── CORS ─────────────────────────────────────────────────────────────────────
-const frontendUrl = process.env.FRONTEND_URL
-
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, Twilio webhooks)
-      if (!origin) return callback(null, true)
-
-      // Allow any localhost origin
-      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
-        return callback(null, true)
-      }
-
-      // Allow any vercel.app deployment URL
-      if (/\.vercel\.app$/.test(origin)) {
-        return callback(null, true)
-      }
-
-      // Allow configured FRONTEND_URL
-      if (frontendUrl && origin === frontendUrl) {
-        return callback(null, true)
-      }
-
-      // Allow all origins in production to prevent CORS blocks
-      return callback(null, true)
-    },
-    credentials: true, // Required for HttpOnly cookies to be sent cross-origin
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
-  }),
-)
-
-// ─── Request parsing ──────────────────────────────────────────────────────────
+// ─── 3. Request parsing ──────────────────────────────────────────────────────
 app.use(express.json())
-app.use(express.urlencoded({ extended: true })) // Required for Twilio webhook (form-encoded)
+app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())
 
-// ─── Security Rate Limiters ───────────────────────────────────────────────────
+// ─── 4. Security Rate Limiters (Skip preflight OPTIONS requests) ─────────────
 const generalApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS',
   message: { error: 'Too many API requests from this IP, please try again after 15 minutes' },
 })
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 25,
+  max: 50,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many login/registration attempts, please try again after 15 minutes' },
+  skip: (req) => req.method === 'OPTIONS',
+  message: { error: 'Too many login attempts, please try again after 15 minutes' },
 })
 
 app.use('/api/auth/login', authLimiter)
