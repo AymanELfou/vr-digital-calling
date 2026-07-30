@@ -147,9 +147,9 @@ router.post(['/voice', '/incoming'], async (req: Request, res: Response) => {
       aiConfig = await prisma.aiConfig.create({
         data: {
           companyId: company.id,
-          systemPrompt: 'You are a professional AI receptionist assistant. Answer customer queries politely in French or Arabic.',
+          systemPrompt: 'You are a professional AI receptionist assistant. Detect the caller language automatically and respond politely in the language they speak to you.',
           voice: 'alloy',
-          language: 'fr',
+          language: 'auto',
           engine: 'realtime',
         },
         select: { id: true, engine: true },
