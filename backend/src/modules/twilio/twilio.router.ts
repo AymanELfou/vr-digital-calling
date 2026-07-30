@@ -59,11 +59,11 @@ function sendErrorTwiML(res: Response, message: string): void {
   res.type('text/xml').status(200).send(twiml.toString())
 }
 
-// ─── POST /api/twilio/voice ───────────────────────────────────────────────────
+// ─── POST /api/twilio/voice (or /api/twilio/incoming) ─────────────────────────
 // Entry point for all incoming calls. Twilio calls this webhook when a
 // customer dials TWILIO_PHONE_NUMBER. Returns TwiML to start a Media Stream.
 
-router.post('/voice', async (req: Request, res: Response) => {
+router.post(['/voice', '/incoming'], async (req: Request, res: Response) => {
   const callSid: string = (req.body.CallSid ?? '').trim()
   const callerNumber: string = (req.body.From ?? '').trim()
   const toNumber: string = (req.body.To ?? '').trim()
