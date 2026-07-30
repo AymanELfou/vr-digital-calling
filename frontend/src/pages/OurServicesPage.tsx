@@ -5,11 +5,14 @@ import {
   Lock, RefreshCw, Globe, Menu, X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { LanguageToggle } from '@/components/shared/LanguageToggle'
+import { useTranslation } from '@/lib/i18n'
 
 export default function OurServicesPage() {
   const navigate = useNavigate()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { t } = useTranslation()
 
   // Shader ambient background
   useEffect(() => {
@@ -133,15 +136,22 @@ export default function OurServicesPage() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
-            <Link to="/#features" className="hover:text-white transition-colors">Features</Link>
-            <Link to="/#how-it-works" className="hover:text-white transition-colors">How It Works</Link>
-            <Link to="/#about" className="hover:text-white transition-colors">About</Link>
-            <Link to="/services" className="text-primary font-semibold transition-colors">Services</Link>
+            <Link to="/#features" className="hover:text-white transition-colors">{t.landing.navFeatures}</Link>
+            <Link to="/#how-it-works" className="hover:text-white transition-colors">{t.landing.navHowItWorks}</Link>
+            <Link to="/#about" className="hover:text-white transition-colors">{t.landing.navAbout}</Link>
+            <Link to="/services" className="text-primary font-semibold transition-colors">{t.landing.navServices}</Link>
           </nav>
 
           <div className="flex items-center gap-3">
+            {/* Language Toggle Button */}
+            <LanguageToggle
+              variant="outline"
+              size="sm"
+              className="border-white/20 text-white hover:bg-white/10"
+            />
+
             <Link to="/login" className="hidden sm:inline-flex px-6 py-2.5 rounded-full bg-gradient-brand text-sm font-semibold text-white btn-glow transition-all">
-              Get Started
+              {t.landing.navGetStarted}
             </Link>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -161,36 +171,41 @@ export default function OurServicesPage() {
               onClick={() => setMobileMenuOpen(false)}
               className="block w-full text-left py-2 text-base font-semibold text-slate-200 hover:text-white transition-colors"
             >
-              Features
+              {t.landing.navFeatures}
             </Link>
             <Link
               to="/#how-it-works"
               onClick={() => setMobileMenuOpen(false)}
               className="block w-full text-left py-2 text-base font-semibold text-slate-200 hover:text-white transition-colors"
             >
-              How It Works
+              {t.landing.navHowItWorks}
             </Link>
             <Link
               to="/#about"
               onClick={() => setMobileMenuOpen(false)}
               className="block w-full text-left py-2 text-base font-semibold text-slate-200 hover:text-white transition-colors"
             >
-              About
+              {t.landing.navAbout}
             </Link>
             <Link
               to="/services"
               onClick={() => setMobileMenuOpen(false)}
               className="block w-full text-left py-2 text-base font-semibold text-primary transition-colors"
             >
-              Services
+              {t.landing.navServices}
             </Link>
             <div className="pt-4 border-t border-white/10 flex flex-col gap-3">
+              <LanguageToggle
+                variant="outline"
+                size="sm"
+                className="w-full justify-center border-white/20 text-white hover:bg-white/10"
+              />
               <Link
                 to="/login"
                 onClick={() => setMobileMenuOpen(false)}
                 className="w-full py-3 text-center rounded-full bg-gradient-brand text-sm font-semibold text-white btn-glow"
               >
-                Get Started
+                {t.landing.navGetStarted}
               </Link>
             </div>
           </div>

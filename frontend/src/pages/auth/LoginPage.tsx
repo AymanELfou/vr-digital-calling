@@ -68,7 +68,7 @@ export default function LoginPage() {
         <div className="space-y-8">
           <div>
             <h1 className="font-display font-bold text-4xl text-foreground leading-tight mb-4">
-              {t.landing.heroTitle}<br />
+              {t.landing.heroTitlePrefix}<br />
               <span className="text-primary">{t.landing.heroTitleHighlight}.</span>
             </h1>
             <p className="text-muted-foreground text-lg">
@@ -78,9 +78,9 @@ export default function LoginPage() {
 
           <div className="space-y-4">
             {[
-              { icon: Phone, textKey: 'feature1Title' as const },
-              { icon: Bot, textKey: 'feature2Title' as const },
-              { icon: Sparkles, textKey: 'feature3Title' as const },
+              { icon: Phone, textKey: 'feat1Title' as const },
+              { icon: Bot, textKey: 'feat2Title' as const },
+              { icon: Sparkles, textKey: 'feat3Title' as const },
             ].map(({ icon: Icon, textKey }) => (
               <div key={textKey} className="flex items-center gap-3 text-muted-foreground">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -92,7 +92,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-muted-foreground text-xs">{t.landing.footer}</p>
+        <p className="text-muted-foreground text-xs">{t.landing.footerRights}</p>
       </div>
 
       {/* Right — Login form */}

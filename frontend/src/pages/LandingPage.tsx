@@ -6,12 +6,15 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { LanguageToggle } from '@/components/shared/LanguageToggle'
+import { useTranslation } from '@/lib/i18n'
 
 export default function LandingPage() {
   const navigate = useNavigate()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [activeTab, setActiveTab] = useState<'features' | 'how-it-works' | 'about'>('features')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { t } = useTranslation()
 
   // Shader animation effect
   useEffect(() => {
@@ -146,31 +149,38 @@ export default function LandingPage() {
               onClick={() => { setActiveTab('features'); scrollToSection('features') }}
               className={`hover:text-white transition-colors ${activeTab === 'features' ? 'text-primary font-semibold' : ''}`}
             >
-              Features
+              {t.landing.navFeatures}
             </button>
             <button
               onClick={() => { setActiveTab('how-it-works'); scrollToSection('how-it-works') }}
               className={`hover:text-white transition-colors ${activeTab === 'how-it-works' ? 'text-primary font-semibold' : ''}`}
             >
-              How It Works
+              {t.landing.navHowItWorks}
             </button>
             <button
               onClick={() => { setActiveTab('about'); scrollToSection('about') }}
               className={`hover:text-white transition-colors ${activeTab === 'about' ? 'text-primary font-semibold' : ''}`}
             >
-              About
+              {t.landing.navAbout}
             </button>
             <Link
               to="/services"
               className="hover:text-white transition-colors text-slate-300 font-medium"
             >
-              Services
+              {t.landing.navServices}
             </Link>
           </nav>
 
           <div className="flex items-center gap-3">
+            {/* Language Toggle in Header NavBar */}
+            <LanguageToggle
+              variant="outline"
+              size="sm"
+              className="border-white/20 text-white hover:bg-white/10"
+            />
+
             <Link to="/login" className="hidden sm:inline-flex px-6 py-2.5 rounded-full bg-gradient-brand text-sm font-semibold text-white btn-glow transition-all">
-              Get Started
+              {t.landing.navGetStarted}
             </Link>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -189,34 +199,39 @@ export default function LandingPage() {
               onClick={() => { setMobileMenuOpen(false); setActiveTab('features'); scrollToSection('features') }}
               className="block w-full text-left py-2 text-base font-semibold text-slate-200 hover:text-white transition-colors"
             >
-              Features
+              {t.landing.navFeatures}
             </button>
             <button
               onClick={() => { setMobileMenuOpen(false); setActiveTab('how-it-works'); scrollToSection('how-it-works') }}
               className="block w-full text-left py-2 text-base font-semibold text-slate-200 hover:text-white transition-colors"
             >
-              How It Works
+              {t.landing.navHowItWorks}
             </button>
             <button
               onClick={() => { setMobileMenuOpen(false); setActiveTab('about'); scrollToSection('about') }}
               className="block w-full text-left py-2 text-base font-semibold text-slate-200 hover:text-white transition-colors"
             >
-              About
+              {t.landing.navAbout}
             </button>
             <Link
               to="/services"
               onClick={() => setMobileMenuOpen(false)}
               className="block w-full text-left py-2 text-base font-semibold text-primary transition-colors"
             >
-              Services
+              {t.landing.navServices}
             </Link>
             <div className="pt-4 border-t border-white/10 flex flex-col gap-3">
+              <LanguageToggle
+                variant="outline"
+                size="sm"
+                className="w-full justify-center border-white/20 text-white hover:bg-white/10"
+              />
               <Link
                 to="/login"
                 onClick={() => setMobileMenuOpen(false)}
                 className="w-full py-3 text-center rounded-full bg-gradient-brand text-sm font-semibold text-white btn-glow"
               >
-                Get Started
+                {t.landing.navGetStarted}
               </Link>
             </div>
           </div>
