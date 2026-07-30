@@ -101,31 +101,33 @@ router.post(['/voice', '/incoming'], async (req: Request, res: Response) => {
     console.log('[TWILIO VOICE] Skipping signature validation (NODE_ENV=development)')
   }
 
-  // ── 3. Resolve demo company via DEMO_COMPANY_ID ───────────────────────────
+  // ── 3. Resolve company via DEMO_COMPANY_ID or first active company fallback ──
   const demoCompanyId = env.DEMO_COMPANY_ID
 
-  if (!demoCompanyId) {
-    console.error('[TWILIO VOICE] DEMO_COMPANY_ID is not set in environment')
-    sendErrorTwiML(
-      res,
-      'The AI assistant is not yet configured. Please contact us directly.',
-    )
-    return
+  let company = demoCompanyId
+    ? await prisma.company.findUnique({
+        where: { id: demoCompanyId },
+        select: { id: true, name: true, isActive: true },
+      })
+    : null
+
+  // Fallback: if DEMO_COMPANY_ID is not configured or not found, use first active company in DB
+  if (!company) {
+    console.warn('[TWILIO VOICE] DEMO_COMPANY_ID not found or invalid — falling back to first active company in DB')
+    company = await prisma.company.findFirst({
+      where: { isActive: true },
+      select: { id: true, name: true, isActive: true },
+    })
   }
 
-  const company = await prisma.company.findUnique({
-    where: { id: demoCompanyId },
-    select: { id: true, name: true, isActive: true },
-  })
-
   if (!company) {
-    console.error(`[TWILIO VOICE] DEMO_COMPANY_ID "${demoCompanyId}" not found in database`)
+    console.error('[TWILIO VOICE] No active company found in database')
     sendErrorTwiML(res, 'Service configuration error. Please contact support.')
     return
   }
 
   if (!company.isActive) {
-    console.warn(`[TWILIO VOICE] Demo company is suspended: ${company.id}`)
+    console.warn(`[TWILIO VOICE] Company is suspended: ${company.id}`)
     sendErrorTwiML(
       res,
       'This service is temporarily unavailable. Please try again later.',
@@ -133,19 +135,33 @@ router.post(['/voice', '/incoming'], async (req: Request, res: Response) => {
     return
   }
 
-  // ── 4. Check AI configuration ────────────────────────────────────────────
-  const aiConfig = await prisma.aiConfig.findUnique({
+  // ── 4. Check & auto-create AI configuration if missing ───────────────────
+  let aiConfig = await prisma.aiConfig.findUnique({
     where: { companyId: company.id },
     select: { id: true, engine: true },
   })
 
   if (!aiConfig) {
-    console.warn(`[TWILIO VOICE] No AI config for company: ${company.id} (${company.name})`)
-    sendErrorTwiML(
-      res,
-      'The AI assistant is not yet configured. Please contact us directly.',
-    )
-    return
+    console.warn(`[TWILIO VOICE] No AI config for company: ${company.id} (${company.name}) — Auto-creating default AI config`)
+    try {
+      aiConfig = await prisma.aiConfig.create({
+        data: {
+          companyId: company.id,
+          systemPrompt: 'You are a professional AI receptionist assistant. Answer customer queries politely in French or Arabic.',
+          voice: 'alloy',
+          language: 'fr',
+          engine: 'realtime',
+        },
+        select: { id: true, engine: true },
+      })
+    } catch (err) {
+      console.error('[TWILIO VOICE] Failed to auto-create AI config:', err)
+      sendErrorTwiML(
+        res,
+        'The AI assistant is not yet configured. Please contact us directly.',
+      )
+      return
+    }
   }
 
   // ── 5. Create Call record in DB ──────────────────────────────────────────
