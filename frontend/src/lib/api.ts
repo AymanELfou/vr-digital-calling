@@ -16,13 +16,17 @@ export const apiClient = axios.create({
   },
 })
 
-// Response interceptor — handle 401 globally
+// Response interceptor — handle 401 globally (only redirect on protected routes)
+const PUBLIC_PATHS = ['/', '/landing', '/services', '/login', '/register']
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear auth state and redirect to login if not already there
-      if (window.location.pathname !== '/login') {
+      // Do NOT force redirect to /login if user is on a public page
+      const currentPath = window.location.pathname
+      const isPublic = PUBLIC_PATHS.includes(currentPath)
+      if (!isPublic) {
         window.location.href = '/login'
       }
     }
