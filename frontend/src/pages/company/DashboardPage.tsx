@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiClient } from '@/lib/api'
 import { useCompany, useAuthStore } from '@/lib/auth.store'
+import { useTranslation } from '@/lib/i18n'
 import type { PaginatedResponse, Call } from '@/lib/types'
 
 function StatCard({
@@ -49,6 +50,7 @@ function StatCard({
 export default function DashboardPage() {
   const company = useCompany()
   const { user } = useAuthStore()
+  const { t } = useTranslation()
 
   const { data: callsData, isLoading } = useQuery({
     queryKey: ['calls', { page: 1, limit: 4 }],
@@ -76,10 +78,10 @@ export default function DashboardPage() {
       {/* Header */}
       <div>
         <h1 className="font-display font-bold text-2xl text-foreground">
-          Welcome back, {company?.name ?? user?.email}
+          {t.dashboard.welcomeBack} {company?.name ?? user?.email}
         </h1>
         <p className="text-muted-foreground mt-1">
-          Here's what's happening with your AI voice agent.
+          {t.dashboard.subtitle}
         </p>
       </div>
 
@@ -89,24 +91,24 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-primary" />
-              Complete your setup
+              {t.dashboard.completeSetup}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex items-center gap-3 text-sm">
               <CheckCircle className="w-4 h-4 text-green-400" />
               <span className="text-foreground line-through opacity-60">
-                Register your company
+                {t.dashboard.registerCompany}
               </span>
             </div>
             <div className="flex items-center gap-3 text-sm">
               <CheckCircle className={`w-4 h-4 ${hasAiConfig ? 'text-green-400' : 'text-muted-foreground'}`} />
               <span className={hasAiConfig ? 'text-foreground line-through opacity-60' : 'text-foreground'}>
-                Configure AI instructions
+                {t.dashboard.configureAI}
               </span>
               {!hasAiConfig && (
                 <Badge variant="outline" className="text-xs text-primary border-primary/30">
-                  Required
+                  {t.common.required}
                 </Badge>
               )}
             </div>
@@ -117,22 +119,22 @@ export default function DashboardPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
-          title="Total Calls"
+          title={t.dashboard.totalCalls}
           value={isLoading ? '—' : totalCalls}
           icon={Phone}
-          trend="All time"
+          trend={t.common.allTime}
           color="primary"
         />
         <StatCard
-          title="Completed Calls"
+          title={t.dashboard.completedCalls}
           value={isLoading ? '—' : completedCalls}
           icon={CheckCircle}
-          trend="From last calls"
+          trend={t.dashboard.fromLastCalls}
           color="green"
         />
         <StatCard
-          title="AI Status"
-          value={hasAiConfig ? 'Active' : 'Setup needed'}
+          title={t.dashboard.aiStatus}
+          value={hasAiConfig ? t.dashboard.aiActive : t.dashboard.setupNeeded}
           icon={PhoneCall}
           color={hasAiConfig ? 'green' : 'orange'}
         />
@@ -141,13 +143,13 @@ export default function DashboardPage() {
       {/* Recent calls */}
       <Card className="glass-card border-border">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle className="text-base font-semibold">Recent Calls</CardTitle>
+          <CardTitle className="text-base font-semibold">{t.dashboard.recentCalls}</CardTitle>
           <Link
             to="/calls"
             className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1 transition"
           >
-            View All
-            <ArrowRight className="w-3.5 h-3.5" />
+            {t.common.viewAll}
+            <ArrowRight className="w-3.5 h-3.5 rtl-flip" />
           </Link>
         </CardHeader>
         <CardContent>
@@ -160,9 +162,9 @@ export default function DashboardPage() {
           ) : calls.length === 0 ? (
             <div className="text-center py-10">
               <Phone className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
-              <p className="text-muted-foreground text-sm">No calls yet.</p>
+              <p className="text-muted-foreground text-sm">{t.dashboard.noCalls}</p>
               <p className="text-muted-foreground text-xs mt-1">
-                Configure your Twilio number to start receiving calls.
+                {t.dashboard.noCallsHint}
               </p>
             </div>
           ) : (
