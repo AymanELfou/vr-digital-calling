@@ -218,18 +218,18 @@ export default function OurServicesPage() {
           <div className="lg:col-span-7 space-y-6 z-10 animate-fade-in">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 backdrop-blur-md">
               <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-              <span className="text-xs font-mono font-semibold text-primary uppercase tracking-wider">NEURAL VOICE ARCHITECTURE</span>
+              <span className="text-xs font-mono font-semibold text-primary uppercase tracking-wider">{t.servicesPage.heroBadge}</span>
             </div>
 
             <h1 className="font-display font-bold text-4xl sm:text-6xl text-white leading-[1.08] tracking-tight">
-              Spatial Communication <br />
+              {t.servicesPage.heroTitle} <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-primary to-purple-400">
-                Redefined by Intelligence
+                {t.servicesPage.heroTitleHighlight}
               </span>
             </h1>
 
             <p className="text-lg text-slate-200 leading-relaxed max-w-xl font-medium">
-              Beyond simple VoIP. We integrate neural voice synthesis, dynamic knowledge mapping, and low-latency spatial audio into a single cohesive ecosystem for global teams.
+              {t.servicesPage.heroSubtitle}
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-2">
@@ -238,8 +238,8 @@ export default function OurServicesPage() {
                 onClick={() => navigate('/login')}
                 className="bg-gradient-brand hover:opacity-90 text-white font-semibold rounded-full px-8 py-6 btn-glow text-base shadow-xl group"
               >
-                Explore Ecosystem
-                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                {t.servicesPage.startTrialBtn}
+                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform rtl-flip" />
               </Button>
               <Button
                 size="lg"
@@ -250,7 +250,7 @@ export default function OurServicesPage() {
                 }}
                 className="border-white/15 text-white hover:bg-white/10 rounded-full px-8 py-6 text-base"
               >
-                Technical Specs
+                {t.servicesPage.exploreServicesBtn}
               </Button>
             </div>
           </div>
@@ -273,162 +273,73 @@ export default function OurServicesPage() {
         </div>
       </section>
 
-      {/* Section 1: Neural Voice Agents */}
+      {/* Section 1: Core Services Grid */}
       <section className="py-20 px-6 max-w-7xl mx-auto space-y-12">
         <div className="flex items-center gap-3">
           <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 text-primary">
             <Cpu size={24} />
           </div>
           <div>
-            <h2 className="font-display font-bold text-3xl sm:text-4xl text-foreground">Neural Voice Agents</h2>
+            <h2 className="font-display font-bold text-3xl sm:text-4xl text-foreground">{t.servicesPage.titleCoreServices}</h2>
             <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
-              Our proprietary LLM-driven voice architecture doesn't just speak; it understands intent, sentiment, and spatial context. Every interaction is rendered with human-like prosody and sub-150ms latency.
+              {t.servicesPage.subtitleCoreServices}
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-          {/* Left Cards */}
-          <div className="lg:col-span-6 space-y-6 flex flex-col justify-between">
-            <div className="glass-card p-8 rounded-3xl border border-white/10 hover:border-primary/40 transition-all">
-              <h3 className="font-bold text-xl text-foreground mb-3">Multimodal Sentiment Analysis</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Real-time tone detection adjusts the agent's response style—from empathetic support to professional urgency—based on the caller's emotional state.
-              </p>
-            </div>
-
-            <div className="glass-card p-8 rounded-3xl border border-white/10 hover:border-primary/40 transition-all">
-              <h3 className="font-bold text-xl text-foreground mb-3">Adaptive Vocal Cloning</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Deploy consistent brand voices across 40+ languages, maintaining identical tonal characteristics and brand personality globally.
-              </p>
-            </div>
-          </div>
-
-          {/* Right Visual & Stats */}
-          <div className="lg:col-span-6 space-y-6 flex flex-col justify-between">
-            <div className="glass-card p-4 rounded-3xl border border-white/10 relative overflow-hidden group">
-              <img
-                src="/services_live_engine.png"
-                alt="Synthesizing Voice Engine"
-                className="w-full h-56 object-cover rounded-2xl border border-white/10"
-              />
-              <div className="absolute top-8 left-8 flex items-center gap-2 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                <span className="text-[11px] font-mono font-bold text-white uppercase">LIVE ENGINE — Synthesizing Voice</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {[
+            {
+              title: t.servicesPage.srv1Title,
+              desc: t.servicesPage.srv1Desc,
+              icon: Cpu,
+            },
+            {
+              title: t.servicesPage.srv2Title,
+              desc: t.servicesPage.srv2Desc,
+              icon: Database,
+            },
+            {
+              title: t.servicesPage.srv3Title,
+              desc: t.servicesPage.srv3Desc,
+              icon: Network,
+            },
+            {
+              title: t.servicesPage.srv4Title,
+              desc: t.servicesPage.srv4Desc,
+              icon: RefreshCw,
+            },
+            {
+              title: t.servicesPage.srv5Title,
+              desc: t.servicesPage.srv5Desc,
+              icon: Lock,
+            },
+            {
+              title: t.servicesPage.srv6Title,
+              desc: t.servicesPage.srv6Desc,
+              icon: ShieldCheck,
+            },
+          ].map((srv, idx) => (
+            <div
+              key={idx}
+              className="glass-card p-8 rounded-3xl border border-white/10 hover:border-primary/40 transition-all duration-300 hover:-translate-y-1.5 group"
+            >
+              <div className="w-12 h-12 rounded-2xl border border-primary/20 bg-primary/10 text-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <srv.icon className="w-6 h-6" />
               </div>
+              <h3 className="font-display font-bold text-xl text-white mb-3">{srv.title}</h3>
+              <p className="text-slate-300 text-sm leading-relaxed">{srv.desc}</p>
             </div>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div className="glass-card p-6 rounded-3xl border border-white/10 text-center">
-                <p className="font-display font-bold text-4xl text-primary">142<span className="text-xl">ms</span></p>
-                <p className="text-xs text-muted-foreground font-mono mt-1 uppercase tracking-wider">AVG. LATENCY</p>
-              </div>
-              <div className="glass-card p-6 rounded-3xl border border-white/10 text-center">
-                <p className="font-display font-bold text-4xl text-purple-400">98.4<span className="text-xl">%</span></p>
-                <p className="text-xs text-muted-foreground font-mono mt-1 uppercase tracking-wider">INTENT ACCURACY</p>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* Section 2: Cognitive Knowledge Mapping */}
-      <section className="py-20 px-6 max-w-7xl mx-auto space-y-12">
-        <div>
-          <h2 className="font-display font-bold text-3xl sm:text-4xl text-foreground">Cognitive Knowledge Mapping</h2>
-          <p className="text-sm text-muted-foreground mt-2 max-w-2xl">
-            Seamlessly tether your enterprise data to every conversation. Our AI scans docs, spreadsheets, and databases to provide instant, cited answers.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Large Card */}
-          <div className="lg:col-span-6 glass-card p-8 rounded-3xl border border-white/10 flex flex-col justify-between space-y-6">
-            <div>
-              <span className="inline-block text-[10px] font-mono font-bold text-primary bg-primary/10 border border-primary/20 px-3 py-1 rounded-full uppercase mb-4">
-                REAL-TIME RETRIEVAL
-              </span>
-              <h3 className="font-display font-bold text-2xl text-foreground mb-3">Semantic Graph Search</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Unlike keyword search, our engine understands the relationship between concepts, allowing for complex queries like "How does the Q3 budget affect the new VR project?" during live calls.
-              </p>
-            </div>
-            {/* Spatial Knowledge Graph Diagram */}
-            <div className="h-44 rounded-2xl bg-[#100d15]/90 border border-white/10 relative overflow-hidden flex items-center justify-center p-4">
-              <div className="relative w-full max-w-sm flex items-center justify-between z-10 px-2">
-                {/* Node 1: User Query */}
-                <div className="flex flex-col items-center gap-1.5 animate-pulse">
-                  <div className="w-11 h-11 rounded-2xl bg-blue-500/20 border border-blue-400/60 flex items-center justify-center text-blue-400 shadow-[0_0_15px_rgba(96,165,250,0.4)]">
-                    <Sparkles size={18} />
-                  </div>
-                  <span className="text-[10px] font-mono font-bold text-slate-300">User Query</span>
-                </div>
-
-                {/* Stream Pulse 1 */}
-                <div className="flex-1 h-0.5 bg-gradient-to-r from-blue-400 via-primary to-purple-400 mx-2 relative">
-                  <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-primary animate-ping" />
-                </div>
-
-                {/* Node 2: Knowledge Graph Engine */}
-                <div className="flex flex-col items-center gap-1.5">
-                  <div className="w-14 h-14 rounded-2xl bg-primary/20 border-2 border-primary flex items-center justify-center text-primary shadow-[0_0_25px_rgba(176,198,255,0.5)]">
-                    <Network size={22} />
-                  </div>
-                  <span className="text-[10px] font-mono font-bold text-primary uppercase">Knowledge Graph</span>
-                </div>
-
-                {/* Stream Pulse 2 */}
-                <div className="flex-1 h-0.5 bg-gradient-to-r from-primary via-purple-400 to-pink-400 mx-2 relative">
-                  <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-purple-400 animate-ping" />
-                </div>
-
-                {/* Node 3: Realtime AI Response */}
-                <div className="flex flex-col items-center gap-1.5 animate-pulse">
-                  <div className="w-11 h-11 rounded-2xl bg-purple-500/20 border border-purple-400/60 flex items-center justify-center text-purple-400 shadow-[0_0_15px_rgba(192,132,252,0.4)]">
-                    <Cpu size={18} />
-                  </div>
-                  <span className="text-[10px] font-mono font-bold text-slate-300">AI Response</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Cards */}
-          <div className="lg:col-span-6 space-y-6 flex flex-col justify-between">
-            <div className="glass-card p-8 rounded-3xl border border-white/10 flex items-start gap-4">
-              <div className="p-3 rounded-2xl bg-blue-400/10 border border-blue-400/20 text-blue-400 shrink-0">
-                <Database size={24} />
-              </div>
-              <div>
-                <h4 className="font-bold text-lg text-foreground mb-2">Universal Data Connectors</h4>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Native integration with Notion, Salesforce, Google Drive, and custom SQL endpoints.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="glass-card p-6 rounded-3xl border border-white/10 space-y-2">
-                <Lock className="w-5 h-5 text-primary mb-2" />
-                <h5 className="font-bold text-sm text-foreground uppercase tracking-wider">Zero Knowledge Encryption</h5>
-                <p className="text-xs text-muted-foreground">Raw data is encrypted in transit and at rest using 256-bit AES.</p>
-              </div>
-              <div className="glass-card p-6 rounded-3xl border border-white/10 space-y-2">
-                <RefreshCw className="w-5 h-5 text-purple-400 mb-2" />
-                <h5 className="font-bold text-sm text-foreground uppercase tracking-wider">Auto-HSM Sync</h5>
-                <p className="text-xs text-muted-foreground">New documents are parsed, tagged, and ready for retrieval in under <strong className="text-foreground">3s</strong>.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 3: Core Technology — The Low-Latency Spatial Engine */}
+      {/* Section 2: Core Technology & Architecture */}
       <section id="core-technology" className="py-20 px-6 max-w-7xl mx-auto space-y-12">
         <div className="text-center space-y-3">
-          <span className="text-xs font-mono font-bold text-primary tracking-widest uppercase">CORE TECHNOLOGY</span>
-          <h2 className="font-display font-bold text-3xl sm:text-5xl text-foreground">The Low-Latency Spatial Engine</h2>
+          <span className="text-xs font-mono font-bold text-primary tracking-widest uppercase">{t.servicesPage.archBadge}</span>
+          <h2 className="font-display font-bold text-3xl sm:text-5xl text-foreground">{t.servicesPage.archTitle}</h2>
+          <p className="text-muted-foreground text-sm max-w-2xl mx-auto">{t.servicesPage.archDesc}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
@@ -444,23 +355,16 @@ export default function OurServicesPage() {
           {/* Right Features List */}
           <div className="lg:col-span-6 space-y-8">
             <div className="space-y-2 border-l-2 border-primary pl-4">
-              <h3 className="font-bold text-xl text-foreground">Binaural Spatial Audio</h3>
+              <h3 className="font-bold text-xl text-foreground">{t.servicesPage.archItem1Title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Process voices in a 3D soundstage. Identify who is speaking instantly by their position in the virtual room, reducing cognitive load during large group calls.
+                {t.servicesPage.archItem1Desc}
               </p>
             </div>
 
             <div className="space-y-2 border-l-2 border-blue-400 pl-4">
-              <h3 className="font-bold text-xl text-foreground">Dynamic Jitter Buffering</h3>
+              <h3 className="font-bold text-xl text-foreground">{t.servicesPage.archItem2Title}</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Advanced ML algorithms predict network fluctuations and adjust buffering in real-time, ensuring crystal clear audio even on 4G/LTE connections.
-              </p>
-            </div>
-
-            <div className="space-y-2 border-l-2 border-purple-400 pl-4">
-              <h3 className="font-bold text-xl text-foreground">Instantaneous Transcription</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Words appear as they are spoken. Our system generates a live, searchable transcript with speaker diarization and key-point highlighting.
+                {t.servicesPage.archItem2Desc}
               </p>
             </div>
 
@@ -488,10 +392,10 @@ export default function OurServicesPage() {
 
           <div className="relative z-10 space-y-6">
             <h2 className="font-display font-bold text-3xl sm:text-5xl text-white">
-              Ready to enter the spatial era?
+              {t.servicesPage.ctaTitle}
             </h2>
             <p className="text-slate-200 text-base font-medium max-w-xl mx-auto">
-              Join 500+ forward-thinking enterprises scaling their communication with VR Digital.
+              {t.servicesPage.ctaSubtitle}
             </p>
 
             <div className="flex flex-wrap justify-center gap-4 pt-2">
@@ -500,7 +404,8 @@ export default function OurServicesPage() {
                 onClick={() => navigate('/login')}
                 className="bg-gradient-brand hover:opacity-90 text-white font-semibold rounded-full px-10 py-6 text-lg btn-glow shadow-xl"
               >
-                Schedule a Demo
+                {t.servicesPage.ctaBtn}
+                <ArrowRight className="w-5 h-5 ml-2 rtl-flip" />
               </Button>
             </div>
           </div>
@@ -512,14 +417,15 @@ export default function OurServicesPage() {
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-muted-foreground">
           <div className="flex items-center gap-3">
             <img src="/logo.jpeg" alt="Logo" className="w-7 h-7 rounded-lg object-cover" />
-            <span className="font-bold text-foreground">VR Digital</span>
-            <span>© 2026 All rights reserved.</span>
+            <span className="font-bold text-foreground">VR Digital Calling</span>
+            <span>{t.landing.footerRights}</span>
           </div>
 
-          <div className="flex items-center gap-6 font-mono text-[11px]">
-            <Link to="/landing#privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
-            <Link to="/landing#terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
-            <Link to="/services" className="hover:text-foreground transition-colors">Contact Us</Link>
+          <div className="flex items-center gap-6">
+            <Link to="/#features" className="hover:text-foreground transition-colors">{t.landing.navFeatures}</Link>
+            <Link to="/#how-it-works" className="hover:text-foreground transition-colors">{t.landing.navHowItWorks}</Link>
+            <Link to="/#about" className="hover:text-foreground transition-colors">{t.landing.navAbout}</Link>
+            <Link to="/login" className="hover:text-foreground transition-colors">{t.landing.navGetStarted}</Link>
           </div>
         </div>
       </footer>

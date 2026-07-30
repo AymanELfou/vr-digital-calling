@@ -245,15 +245,15 @@ export default function LandingPage() {
           <div className="lg:col-span-6 space-y-6 z-10 animate-fade-in">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 backdrop-blur-md">
               <Sparkles className="w-4 h-4 text-primary animate-pulse" />
-              <span className="text-xs font-semibold text-primary uppercase tracking-wider">AI Powered Voice Receptionist</span>
+              <span className="text-xs font-semibold text-primary uppercase tracking-wider">{t.landing.heroBadge}</span>
             </div>
 
             <h1 className="font-display font-bold text-4xl sm:text-6xl text-white leading-[1.1] tracking-tight">
-              Your AI Agent <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-400 to-purple-400">Answers</span> Every Customer Call 24/7
+              {t.landing.heroTitlePrefix} <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-400 to-purple-400">{t.landing.heroTitleHighlight}</span> {t.landing.heroTitleSuffix}
             </h1>
 
             <p className="text-lg text-slate-200 leading-relaxed max-w-xl font-medium">
-              Automate customer calls using OpenAI Realtime AI and Twilio Voice. Experience latency-free conversations that feel indistinguishable from human support.
+              {t.landing.heroSubtitle}
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-2">
@@ -262,8 +262,8 @@ export default function LandingPage() {
                 onClick={() => navigate('/login')}
                 className="bg-gradient-brand hover:opacity-90 text-white font-semibold rounded-full px-8 py-6 btn-glow text-base shadow-xl group"
               >
-                Start Free Trial
-                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                {t.landing.startTrial}
+                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform rtl-flip" />
               </Button>
               <Button
                 size="lg"
@@ -272,20 +272,20 @@ export default function LandingPage() {
                 className="border-white/15 text-foreground hover:bg-white/10 rounded-full px-8 py-6 text-base"
               >
                 <Play className="w-4 h-4 mr-2 text-primary" />
-                How It Works
+                {t.landing.howItWorksBtn}
               </Button>
             </div>
 
             {/* Quick feature checklist */}
             <div className="pt-6 flex flex-wrap items-center gap-6 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-green-400" /> Instant Setup
+                <CheckCircle2 className="w-4 h-4 text-green-400" /> {t.landing.checkInstantSetup}
               </span>
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-green-400" /> Moroccan & Global Phone Numbers
+                <CheckCircle2 className="w-4 h-4 text-green-400" /> {t.landing.checkMoroccanGlobal}
               </span>
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-green-400" /> OpenAI Realtime Engine
+                <CheckCircle2 className="w-4 h-4 text-green-400" /> {t.landing.checkOpenAI}
               </span>
             </div>
           </div>
@@ -308,7 +308,7 @@ export default function LandingPage() {
                   <PhoneCall className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] text-muted-foreground font-medium">Incoming Call</p>
+                  <p className="text-[11px] text-muted-foreground font-medium">{t.landing.cardIncomingCall}</p>
                   <p className="text-xs font-mono font-bold text-foreground">+212 634 847654</p>
                 </div>
               </div>
@@ -319,8 +319,8 @@ export default function LandingPage() {
                   <Bot className="w-5 h-5 relative z-10" />
                 </div>
                 <div>
-                  <p className="text-[11px] text-muted-foreground font-medium">AI Answering</p>
-                  <p className="text-xs font-bold text-green-400">Low Latency Stream Active</p>
+                  <p className="text-[11px] text-muted-foreground font-medium">{t.landing.cardAIAnswering}</p>
+                  <p className="text-xs font-bold text-green-400">{t.landing.cardLowLatency}</p>
                 </div>
               </div>
             </div>
@@ -332,13 +332,13 @@ export default function LandingPage() {
       <section id="features" className="py-24 px-6 max-w-7xl mx-auto">
         <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
           <Badge className="bg-primary/10 text-primary border-primary/20 text-xs px-3 py-1">
-            Core Platform Capabilities
+            {t.landing.featuresBadge}
           </Badge>
           <h2 className="font-display font-bold text-3xl sm:text-5xl text-white">
-            The Future of Voice Support
+            {t.landing.featuresTitle}
           </h2>
           <p className="text-slate-200 text-base sm:text-lg font-medium">
-            Enterprise-grade infrastructure designed for modern companies that never sleep.
+            {t.landing.featuresSubtitle}
           </p>
         </div>
 
@@ -346,38 +346,38 @@ export default function LandingPage() {
           {[
             {
               icon: Bot,
-              title: 'AI Voice Agent',
-              desc: 'Hyper-realistic neural voices powered by OpenAI Realtime low-latency response engine.',
+              title: t.landing.feat1Title,
+              desc: t.landing.feat1Desc,
               color: 'text-primary bg-primary/10 border-primary/20',
             },
             {
               icon: BookOpen,
-              title: 'Knowledge Base',
-              desc: 'Upload business FAQs and documentation so your AI agent speaks with 100% accuracy.',
+              title: t.landing.feat2Title,
+              desc: t.landing.feat2Desc,
               color: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
             },
             {
               icon: Briefcase,
-              title: 'Services Management',
-              desc: 'Define company services, pricing, and appointment durations automatically injected into AI memory.',
+              title: t.landing.feat3Title,
+              desc: t.landing.feat3Desc,
               color: 'text-purple-400 bg-purple-400/10 border-purple-400/20',
             },
             {
               icon: Zap,
-              title: 'Realtime Calls',
-              desc: 'Integrated Twilio Voice media streams allowing natural back-and-forth conversation interruptions.',
+              title: t.landing.feat4Title,
+              desc: t.landing.feat4Desc,
               color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
             },
             {
               icon: History,
-              title: 'Call Transcripts',
-              desc: 'Full turn-by-turn text transcripts and status history stored securely in PostgreSQL.',
+              title: t.landing.feat5Title,
+              desc: t.landing.feat5Desc,
               color: 'text-green-400 bg-green-400/10 border-green-400/20',
             },
             {
               icon: BarChart3,
-              title: 'Control Tower Analytics',
-              desc: 'Platform-wide telemetry, call duration metrics, and estimated OpenAI API cost tracking.',
+              title: t.landing.feat6Title,
+              desc: t.landing.feat6Desc,
               color: 'text-pink-400 bg-pink-400/10 border-pink-400/20',
             },
           ].map((feat, idx) => (
@@ -398,10 +398,10 @@ export default function LandingPage() {
         <div className="mt-16 glass-card p-8 rounded-3xl border border-white/10 overflow-hidden relative grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           <div className="lg:col-span-7 space-y-4">
             <h3 className="font-display font-bold text-2xl sm:text-3xl text-foreground">
-              Natural Conversations Powered by OpenAI Realtime
+              {t.landing.bannerTitle}
             </h3>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Our WebSockets integration bridges Twilio g711_ulaw audio directly to OpenAI's Realtime API. No speech-to-text delay — the AI hears and speaks simultaneously.
+              {t.landing.bannerDesc}
             </p>
           </div>
           <div className="lg:col-span-5 relative">
@@ -419,37 +419,37 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-3xl mx-auto space-y-4 mb-20">
             <Badge className="bg-blue-400/10 text-blue-400 border-blue-400/20 text-xs px-3 py-1">
-              Simple 4-Step Setup
+              {t.landing.howBadge}
             </Badge>
             <h2 className="font-display font-bold text-3xl sm:text-5xl text-foreground">
-              Set Up Your AI Agent in Minutes
+              {t.landing.howTitle}
             </h2>
             <p className="text-muted-foreground text-base">
-              No complex code required. Connect your phone number and let AI handle your calls.
+              {t.landing.howSubtitle}
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
               {
-                step: '01',
-                title: 'Connect Number',
-                desc: 'Link your Twilio account and Moroccan or global phone number.',
+                step: t.landing.step1Number,
+                title: t.landing.step1Title,
+                desc: t.landing.step1Desc,
               },
               {
-                step: '02',
-                title: 'Educate AI',
-                desc: 'Add company information, services, prices, and FAQ items.',
+                step: t.landing.step2Number,
+                title: t.landing.step2Title,
+                desc: t.landing.step2Desc,
               },
               {
-                step: '03',
-                title: 'Customize Voice',
-                desc: 'Select AI voice tone (Alloy, Echo, Nova) and language options.',
+                step: t.landing.step3Number,
+                title: t.landing.step3Title,
+                desc: t.landing.step3Desc,
               },
               {
-                step: '04',
-                title: 'Go Live 24/7',
-                desc: 'Your AI agent instantly answers incoming calls round-the-clock.',
+                step: t.landing.step4Number,
+                title: t.landing.step4Title,
+                desc: t.landing.step4Desc,
               },
             ].map((st, i) => (
               <div key={i} className="glass-card p-8 rounded-3xl border border-white/10 relative group hover:border-primary/40 transition-all">
@@ -476,28 +476,28 @@ export default function LandingPage() {
           </div>
           <div className="lg:col-span-6 space-y-6">
             <Badge className="bg-purple-400/10 text-purple-400 border-purple-400/20 text-xs px-3 py-1">
-              About VR Digital Calling
+              {t.landing.aboutBadge}
             </Badge>
             <h2 className="font-display font-bold text-3xl sm:text-5xl text-foreground leading-tight">
-              Revolutionizing Business Telephony with AI
+              {t.landing.aboutTitle}
             </h2>
             <p className="text-muted-foreground text-base leading-relaxed">
-              VR Digital Calling provides businesses with autonomous voice receptionists that understand context, speak naturally, and execute business instructions effortlessly.
+              {t.landing.aboutDesc}
             </p>
 
             <div className="space-y-4 pt-2">
               <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-4">
                 <Shield className="w-6 h-6 text-primary shrink-0 mt-1" />
                 <div>
-                  <h4 className="font-bold text-foreground text-sm">Enterprise Security & Telemetry</h4>
-                  <p className="text-xs text-muted-foreground mt-1">Full privacy controls, PostgreSQL storage, and real-time Control Tower status monitoring.</p>
+                  <h4 className="font-bold text-foreground text-sm">{t.landing.aboutSec1Title}</h4>
+                  <p className="text-xs text-muted-foreground mt-1">{t.landing.aboutSec1Desc}</p>
                 </div>
               </div>
               <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-4">
                 <Zap className="w-6 h-6 text-yellow-400 shrink-0 mt-1" />
                 <div>
-                  <h4 className="font-bold text-foreground text-sm">Zero Missed Opportunities</h4>
-                  <p className="text-xs text-muted-foreground mt-1">Never lose a potential customer to busy signals or after-hours voicemails again.</p>
+                  <h4 className="font-bold text-foreground text-sm">{t.landing.aboutSec2Title}</h4>
+                  <p className="text-xs text-muted-foreground mt-1">{t.landing.aboutSec2Desc}</p>
                 </div>
               </div>
             </div>
@@ -513,18 +513,18 @@ export default function LandingPage() {
 
           <div className="relative z-10 space-y-6">
             <h2 className="font-display font-bold text-3xl sm:text-5xl text-foreground">
-              Ready to Automate Your Customer Calls?
+              {t.landing.ctaTitle}
             </h2>
             <p className="text-muted-foreground text-base max-w-xl mx-auto">
-              Join forward-thinking companies scaling their voice operations with VR Digital Calling.
+              {t.landing.ctaSubtitle}
             </p>
             <Button
               size="lg"
               onClick={() => navigate('/login')}
               className="bg-gradient-brand hover:opacity-90 text-white font-semibold rounded-full px-10 py-6 text-lg btn-glow shadow-xl"
             >
-              Get Started Now
-              <ArrowRight className="w-5 h-5 ml-2" />
+              {t.landing.ctaButton}
+              <ArrowRight className="w-5 h-5 ml-2 rtl-flip" />
             </Button>
           </div>
         </div>
@@ -536,14 +536,14 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <img src="/logo.jpeg" alt="Logo" className="w-7 h-7 rounded-lg object-cover" />
             <span className="font-bold text-foreground">VR Digital Calling</span>
-            <span>© 2026 All rights reserved.</span>
+            <span>{t.landing.footerRights}</span>
           </div>
 
           <div className="flex items-center gap-6">
-            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-            <a href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</a>
-            <a href="#about" className="hover:text-foreground transition-colors">About</a>
-            <Link to="/login" className="hover:text-foreground transition-colors">Sign In</Link>
+            <a href="#features" className="hover:text-foreground transition-colors">{t.landing.navFeatures}</a>
+            <a href="#how-it-works" className="hover:text-foreground transition-colors">{t.landing.navHowItWorks}</a>
+            <a href="#about" className="hover:text-foreground transition-colors">{t.landing.navAbout}</a>
+            <Link to="/login" className="hover:text-foreground transition-colors">{t.landing.navGetStarted}</Link>
           </div>
         </div>
       </footer>
