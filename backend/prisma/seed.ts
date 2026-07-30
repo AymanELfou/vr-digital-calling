@@ -11,81 +11,73 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('🌱 Starting database seeding...')
 
-  // 1. Create / Upsert Admin User (admin@gmail.com & admin@vrdigital.com)
-  const adminCredentials = [
-    { email: 'admin@gmail.com', password: 'mdp12345678' },
-    { email: 'admin@vrdigital.com', password: 'AdminPassword123!' },
-  ]
+  // 1. Admin User
+  const adminEmail = 'admin@vrdigital.com'
+  const adminPassword = 'admin123'
+  const adminPasswordHash = await bcrypt.hash(adminPassword, 12)
 
-  for (const cred of adminCredentials) {
-    const existing = await prisma.user.findUnique({ where: { email: cred.email } })
-    const passwordHash = await bcrypt.hash(cred.password, 12)
-    if (!existing) {
-      const admin = await prisma.user.create({
-        data: {
-          email: cred.email,
-          passwordHash,
-          role: 'ADMIN',
-          isActive: true,
-        },
-      })
-      console.log(`✅ Admin user created: ${admin.email} (Password: ${cred.password})`)
-    } else {
-      // Update password hash to match requested credentials
-      await prisma.user.update({
-        where: { email: cred.email },
-        data: { passwordHash },
-      })
-      console.log(`ℹ️ Admin user updated: ${cred.email} (Password: ${cred.password})`)
-    }
+  const existingAdmin = await prisma.user.findUnique({ where: { email: adminEmail } })
+  if (!existingAdmin) {
+    const admin = await prisma.user.create({
+      data: {
+        email: adminEmail,
+        passwordHash: adminPasswordHash,
+        role: 'ADMIN',
+        isActive: true,
+      },
+    })
+    console.log(`✅ Admin user created: ${admin.email} (Password: ${adminPassword})`)
+  } else {
+    await prisma.user.update({
+      where: { email: adminEmail },
+      data: { passwordHash: adminPasswordHash },
+    })
+    console.log(`ℹ️ Admin user updated: ${adminEmail} (Password: ${adminPassword})`)
   }
 
-  // 2. Create / Upsert Company Users (company@gmail.com)
-  const companyCredentials = [
-    { email: 'company@gmail.com', password: 'mdp12345678', name: 'VR Digital Company' },
-    { email: 'demo@company.com', password: 'Company123456!', name: 'Demo Enterprise' },
-  ]
+  // 2. Company User
+  const companyEmail = 'company@gmail.com'
+  const companyPassword = '12345678'
+  const companyName = 'VR Digital Company'
+  const companyPasswordHash = await bcrypt.hash(companyPassword, 12)
 
-  for (const cred of companyCredentials) {
-    const existingUser = await prisma.user.findUnique({
-      where: { email: cred.email },
-      include: { company: true },
-    })
-    const passwordHash = await bcrypt.hash(cred.password, 12)
+  const existingCompanyUser = await prisma.user.findUnique({
+    where: { email: companyEmail },
+    include: { company: true },
+  })
 
-    if (!existingUser) {
-      const companyUser = await prisma.user.create({
-        data: {
-          email: cred.email,
-          passwordHash,
-          role: 'COMPANY',
-          isActive: true,
-          company: {
-            create: {
-              name: cred.name,
-              description: 'AI voice receptionist workspace for handling incoming calls.',
-              phone: '0634847654',
-              aiConfig: {
-                create: {
-                  systemPrompt: `You are a professional AI voice assistant for ${cred.name}. Answer customer questions politely and accurately.`,
-                  voice: 'alloy',
-                  engine: 'realtime',
-                  allowGeneral: true,
-                },
+  if (!existingCompanyUser) {
+    const companyUser = await prisma.user.create({
+      data: {
+        email: companyEmail,
+        passwordHash: companyPasswordHash,
+        role: 'COMPANY',
+        isActive: true,
+        company: {
+          create: {
+            name: companyName,
+            description: 'AI voice receptionist workspace for handling incoming customer calls.',
+            phone: '0634847654',
+            aiConfig: {
+              create: {
+                systemPrompt: `You are a professional AI voice assistant for ${companyName}. Answer customer questions politely and accurately.`,
+                voice: 'alloy',
+                engine: 'realtime',
+                allowGeneral: true,
               },
             },
           },
         },
-        include: { company: true },
-      })
-      console.log(`✅ Company user created: ${companyUser.email} (Password: ${cred.password})`)
-    } else {
-      await prisma.user.update({
-        where: { email: cred.email },
-        data: { passwordHash },
-      })
-      console.log(`ℹ️ Company user updated: ${cred.email} (Password: ${cred.password})`)
-    }
+      },
+      include: { company: true },
+    })
+    console.log(`✅ Company user created: ${companyUser.email} (Password: ${companyPassword})`)
+  } else {
+    await prisma.user.update({
+      where: { email: companyEmail },
+      data: { passwordHash: companyPasswordHash },
+    })
+    console.log(`ℹ️ Company user updated: ${companyEmail} (Password: ${companyPassword})`)
   }
 
   console.log('🎉 Seeding completed successfully!')

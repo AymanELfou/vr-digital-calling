@@ -34,8 +34,10 @@ app.set('trust proxy', 1)
 // ─── 1. CORS Configuration (MUST BE FIRST) ──────────────────────────────────
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    // Dynamically allow all origins with credentials (Vercel, localhost, etc.)
-    callback(null, true)
+    // If no origin (e.g. server-to-server, curl, mobile apps), allow
+    if (!origin) return callback(null, true)
+    // Reflect exact requesting origin string to satisfy Access-Control-Allow-Credentials
+    return callback(null, origin)
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
