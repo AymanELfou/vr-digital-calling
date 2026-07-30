@@ -184,12 +184,21 @@ router.post(['/voice', '/incoming'], async (req: Request, res: Response) => {
   // Twilio opens a WebSocket to /ws/media and streams μ-law audio bidirectionally.
   // companyId and callSid are passed as custom parameters to the WS handler.
   const wsProtocol = 'wss'
-  const host = (req.headers['x-forwarded-host'] as string) || req.hostname
+  let host = (req.headers['x-forwarded-host'] as string) || req.headers.host || req.hostname || 'vr-digital-calling.onrender.com'
+
+  // Ensure production calls always connect to the public Render domain, not internal localhost/ports
+  if (env.NODE_ENV === 'production' || host.includes('localhost') || host.includes('127.0.0.1') || host.includes('0.0.0.0')) {
+    host = 'vr-digital-calling.onrender.com'
+  } else {
+    host = host.split(':')[0]
+  }
+
+  const streamUrl = `${wsProtocol}://${host}/ws/media`
 
   const twiml = new twilio.twiml.VoiceResponse()
   const connect = twiml.connect()
   const stream = connect.stream({
-    url: `${wsProtocol}://${host}/ws/media`,
+    url: streamUrl,
   })
 
   stream.parameter({ name: 'companyId', value: company.id })
